@@ -5,8 +5,7 @@ This application implements a simple object/threat detection system using [YOLOv
 ## Requirements
 
 TDS has been successfully built and executed using the following set-up:
- - Ubuntu 18.04
- - Ubuntu 20.04
+ - Ubuntu 18.04 and 20.04
  - Raspbian GNU/Linux 10 (buster) (Raspberry Pi platform)
 
 TDS for Ubuntu/x86 requires:
@@ -17,13 +16,13 @@ TDS for Raspberry Pi requires:
 
 We really do not need OpenCV for this version of TDS; so it is safe to skip instructions related to OpenCV installation :)
 
-**(optional) Static linking: ** If static linking against `darknet-nnpack` is needed to generate one single binary file, then some changes are needed to build `nnpack` (`nnpack`, not `darknet-nnpack`). Specifically, the following command has to be used:
+__(optional) Static linking: __ If static linking against `darknet-nnpack` is needed to generate one single binary file, then some changes are needed to build `nnpack` (`nnpack`, not `darknet-nnpack`). Specifically, the following command has to be used:
 
 ```
 cmake -G Ninja -DNNPACK_LIBRARY_TYPE=static ..
 ```
 
-This generates `libnnpack.a` and `libpthreadpool.a`, which need to be included during linking time of the `mas-demo` executable.
+This generates `libnnpack.a` and `libpthreadpool.a`, which need to be included during linking time of the `tds` executable.
 
 
 ## Usage
@@ -66,7 +65,7 @@ ln -s <darknet-nnpack home>/data/
 Finally, we can run TDS:
 
 ```
-./mas-demo ./conf.json
+./tds ./conf.json
 ```
 
 

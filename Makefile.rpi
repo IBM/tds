@@ -2,10 +2,10 @@ CC = gcc
 CFLAGS = -I. -I/home/pi/Download/darknet-nnpack/include -pedantic -Wall -DNNPACK
 LDFLAGS = -static -L/home/pi/Download/darknet-nnpack -L/home/pi/Download/NNPACK/build -L/home/pi/Download/NNPACK/build/deps/pthreadpool -ldarknet -lnnpack -lpthreadpool -lpthread -lm
 DEPS =
-OBJ = mas-demo-main.o
+OBJ = tds-main.o
 MJSONDIR = utils/microjson-1.6
 
-all: $(MJSONDIR) mas-demo
+all: $(MJSONDIR) tds
 
 $(MJSONDIR):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
@@ -13,12 +13,12 @@ $(MJSONDIR):
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-mas-demo: $(OBJ)
+tds: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(MJSONDIR)/mjson.o $(LDFLAGS)
 
 .PHONY: all clean $(MJSONDIR)
 
 clean:
-	rm -f *.o mas-demo
+	rm -f *.o tds
 	$(MAKE) -C $(MJSONDIR) clean
  

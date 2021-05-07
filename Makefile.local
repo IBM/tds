@@ -2,10 +2,10 @@ CC = gcc
 CFLAGS = -I. -I/home/augustojv/devel-workspace/darknet/include -pedantic -Wall
 LDFLAGS = -L/home/augustojv/devel-workspace/darknet/ -ldarknet
 DEPS =
-OBJ = mas-demo-main.o
+OBJ = tds-main.o
 MJSONDIR = utils/microjson-1.6
 
-all: $(MJSONDIR) mas-demo
+all: $(MJSONDIR) tds
 
 $(MJSONDIR):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
@@ -13,12 +13,12 @@ $(MJSONDIR):
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-mas-demo: $(OBJ)
+tds: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJSONDIR)/mjson.o
 
 .PHONY: all clean $(MJSONDIR)
 
 clean:
-	rm -f *.o mas-demo
+	rm -f *.o tds
 	$(MAKE) -C $(MJSONDIR) clean
  
