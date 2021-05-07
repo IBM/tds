@@ -1,0 +1,497 @@
+= Building static JSON parsers with microjson =
+Eric S. Raymond <esr@thyrsus.com>
+
+== Overview ==
+
+microjson is a tiny parser for the largest subset of JSON (JavaScript Object
+Notation) that can be unpacked to C static storage. It uses entirely
+fixed-extent memory, no malloc().  It is thus very suitable for use in
+memory-constrained environments such as embedded systems; also for
+long-running service daemons that must provably not leak memory.
+
+microjson is extremely well-tested code.  This is essentially the same
+parser used in GPSD and its client libraries, which have hundreds of
+millions of deployments underneath Google Maps in Android phones.
+
+microjson parses JSON from string input and unpacks the content
+directly into static storage declared by the calling program.
+You give it a set of template structures describing the expected shape
+of the incoming JSON, and it will error out if that shape is not
+matched.  When the parse succeeds, attribute values will be extracted
+into static locations specified in the template structures.
+
+== How To Use This Document ==
+
+This is a fast tutorial for working programmers.  It teaches by
+examples; if you read the code carefully it will tell you 
+more than the accompanying text. Just read it in sequence, trying not
+to skip anything.
+
+All the examples are shipped in the microjson distribution.  Most are
+not synthetic toys, but stripped-down versions of working code from
+GPSD. Copy them freely.  You may also want to look at the source for
+test_microjson.c, the regression test; it exercises most cases.
+
+== An Example ==
+
+Here is nearly the simplest possible example:
+
+.Example 1
+---------------------------------------------------------------------
+/*
+ * Parse JSON shaped like '{"flag1":true,"flag2":false,"count":42}'
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#include "mjson.h"
+
+static bool flag1, flag2;
+static int count;
+
+static const struct json_attr_t json_attrs[] = {
+    {"count",   t_integer, .addr.integer = &count},
+    {"flag1",   t_boolean, .addr.boolean = &flag1,},
+    {"flag2",   t_boolean, .addr.boolean = &flag2,},
+    {NULL},
+};
+
+int main(int argc, char *argv[])
+{
+    int status = 0;
+
+    status = json_read_object(argv[1], json_attrs, NULL);
+    printf("status = %d, count = %d, flag1 = %d, flag2 = %d\n",
+	   status, count, flag1, flag2);
+    if (status != 0)
+	puts(json_error_string(status));
+}
+---------------------------------------------------------------------
+
+And here are some invocations:
+
+---------------------------------------------------------------------
+$ example1 '{"flag1":true,"flag2":false,"count":42}'
+status = 0, count = 42, flag1 = 1, flag2 = 0
+
+$ example1 '{"flag1":true,"flag2":false,"count":23}'
+status = 0, count = 23, flag1 = 1, flag2 = 0
+
+$ example1 '{"whozis":true,"flag2":false,"count":23}'
+status = 3, count = 0, flag1 = 0, flag2 = 0
+unknown attribute name
+
+$ example1 '{"flag1":true,"flag2":false,"count":23,"whozis":"whatsis"}'
+status = 3, count = 23, flag1 = 1, flag2 = 0
+unknown attribute name
+
+---------------------------------------------------------------------
+
+The +json_read_object()+ call unpacks the values in the argument JSON
+object into three static variables.  In many uses the target locations
+would instead be storage in some static structure instance.
+
+In this example, the +json_attrs+ structure array associates each
+possible member name with a type and a target address.  The function
++json_read_object()+ treats this array of constants as parsing
+instructions.
+
+When an unexpected attribute name is encountered, the parser normally
+terminates, returning an error status (but it is possible to mage the
+parser ignore unknown attributes instead).  Attributes and values
+parsed before a terminating error modify their target storage.
+
+The parser recognizes a wider range of types than this, and the
+template structures can specify defaults when an expected JSON 
+attribute is omitted. Most of the rest is details.
+
+== Theory of Operation ==
+
+The parser is a simple state machine that walks the input looking
+for syntactically well-formed attribute-value pairs.  Each time it
+finds one, it looks up the name in the template structure array 
+driving the parse. The type tells it how to interpret the 
+value; the target address tells it where to put the value.
+
+Syntax errors, or any unknown attribute name, terminate the parse.
+That is unless the wildcard ignore option is used.
+
+One consequence to be aware of is that if an input JSON object 
+contains multiple attribute-value pairs with the same attribute,
+the associated storage will be modified each time and only
+the last setting will be effective.
+
+===  Simple Value Types ===
+
+The type field of a +json_attr_t+ structure can have the following
+'simple' alternatives, each corresponding to an atomic JSON value:
+
++t_check+: Value of this attribute must match a specified string,
+or the parse will fail with a distinguishable error.
+
++t_integer+: Parse a single signed integer literal, copy the value 
+to a C +int+ location.  Uses +strtol()+.
+
++t_uinteger+: Parse a single signed integer literal, copy the value 
+to a C +unsigned int+ location. Uses +strtoul()+.
+
++t_real+: Parse a single signed float literal, copy the value 
+to a C +double+ location. Uses +strtod()+.
+
++t_boolean+: Accept one of the JSON literals +true+ or +false+,
+copy the value to a C +bool+ location.
+
++t_string+: Accept a JSON string literal, copy the contents to a
+C char buffer.
+
++t_character+: Accept a single-character JSON string literal, copy
+that character to a C +char+ location.
+
++t_time+" Accept a string that is an RFC3339 timestamp (full ISO-8601
+date/time in Zulu time with optional fractional decimal seconds).  
+Store as a double value, seconds since Unix epoch.  Accepted only
+if the code was built with -DTIME_ENABLE; introduces a dependency
+on the glibc function timegm().
+
+Associated with each simple value type's storage (in the +addr+
+union) is a correspondingly-named field in the +dflt+ union).
+This is a default value which is copied to the target storage
+when the JSON object does not contain the corresponding attribute.
+You can turn off this defaulting behavior by setting the +nodefault+
+member to +true+.
+
+=== Enumerated-value types ===
+
+The parser includes support for string attributes with controlled 
+vocabularies.
+
+A +json_attr_t+ instance with a +t_integer+ or +t_uinteger+ type field
+can point at a map (an array of +json_enum_t+ structures) that lists
+names and pairs of integral values.  If this is done, the parser
+expects the values of the JSON attribute to be strings but internally
+maps them to corresponding integer values before setting the target
+storage. An un-enumerated string value causes the parse to error out.
+
+(Case 8 in the unit test source code illustrates how to use this feature.)
+
+=== Compound Value Types ===
+
+The following cases do not parse JSON value atoms:
+
+==== Skip fields ====
+
+t_ignore: Value of this attribute is ignored.  Significant because
+unexpected attribute names cause the parse to terminate with error.
+An empty attribute name may be used to wildcard ignore all unknown
+fields. This should rarely be used and always as penultimate to the
+terminating NULL.
+
+==== Sub-objects ====
+
+t_object: It is possible to parse JSON objects within JSON objects.
+See case 14 in the unit test for an example.
+
+==== Parallel arrays ===
+
+t_array: Value of this attribute is expected to be a homogenous array.
+Another field of the structure specifies the array's element type,
+which can be any simple type or t_object (meaning a JSON subobject).
+
+If the array has simple elements, three additional things must be
+specified: the base address of the array's storage, the maximum number
+of elements it can have, and an integer address where the parser will
+place a count of elements filled in.
+
+Simple array values always default to zero for numeric types, +false+
+for booleans, and NULL for strings.
+
+The array element type may be +t_object+, as in the +satellites+ field
+in this example:  
+
+.Example 2
+------------------------------------------------------------------------
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "mjson.h"
+
+#define MAXCHANNELS 72
+
+static bool usedflags[MAXCHANNELS];
+static int PRN[MAXCHANNELS];
+static int elevation[MAXCHANNELS];
+static int azimuth[MAXCHANNELS];
+static int visible;
+
+const struct json_attr_t sat_attrs[] = {
+    {"PRN",	t_integer, .addr.integer = PRN},
+    {"el",	t_integer, .addr.integer = elevation},
+    {"az",	t_integer, .addr.integer = azimuth},
+    {"used",	t_boolean, .addr.boolean = usedflags},
+    {NULL},
+};
+
+const struct json_attr_t json_attrs_sky[] = {
+    {"class",      t_check,   .dflt.check = "SKY"},
+    {"satellites", t_array,   .addr.array.element_type = t_object,
+		   	      .addr.array.arr.objects.subtype=sat_attrs,
+			      .addr.array.maxlen = MAXCHANNELS,
+			      .addr.array.count = &visible},
+    {NULL},
+    };
+
+int main(int argc, char *argv[])
+{
+    int i, status = 0;
+
+    status = json_read_object(argv[1], json_attrs_sky, NULL);
+    printf("%d satellites:\n", visible);
+    for (i = 0; i < visible; i++)
+	printf("PRN = %d, elevation = %d, azimuth = %d\n", 
+	       PRN[i], elevation[i], azimuth[i]);
+
+    if (status != 0)
+	puts(json_error_string(status));
+}
+------------------------------------------------------------------------
+
+Here's an example invocation (string literal folded for readability):
+
+--------------------------------------------------------
+$ example2 '{"class":"SKY","satellites":
+              [{"PRN":10,"el":45,"az":196,"used":true},
+               {"PRN":29,"el":67,"az":310,"used":true}]}'
+2 satellites:
+PRN = 10, elevation = 45, azimuth = 196
+PRN = 29, elevation = 67, azimuth = 310
+--------------------------------------------------------
+
+In this case, the parser needs to be told where to find a template
+array describing how to parse the element objects. The target addresses
+in this structure will point to the base addressees of parallel arrays.
+The arrays are filled in until the parser runs out of conforming JSON
+sub-objects to parse or would exceed the +maxlen+ count of elements.
+
+More formally: parallel object arrays take one base address per object
+subfield, and are mapped into parallel C arrays (one per subfield).
+Strings are not supported in this kind of array, as they don't have a
+"natural" fixed size to use as an offset multiplier.
+
+The default of array elements is always zero (false for booleans, NULL
+for strings).
+
+==== Structure arrays ====
+
+There's a different way to parse arrays that can unpack an
+array of JSON objects directly into an array of C structs.
+
+.Example 3:
+--------------------------------------------------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <limits.h>
+#include <string.h>
+
+
+#include "mjson.h"
+
+#define MAXUSERDEVS	4
+
+struct devconfig_t {
+    char path[PATH_MAX];
+    double activated;
+};
+
+struct devlist_t {
+    int ndevices;
+    struct devconfig_t list[MAXUSERDEVS];
+};
+
+static struct devlist_t devicelist;
+
+static int json_devicelist_read(const char *buf)
+{
+    const struct json_attr_t json_attrs_subdevice[] = {
+	{"path",       t_string,     STRUCTOBJECT(struct devconfig_t, path),
+	                                .len = sizeof(devicelist.list[0].path)},
+	{"activated",  t_real,       STRUCTOBJECT(struct devconfig_t, activated)},
+	{NULL},
+    };
+    const struct json_attr_t json_attrs_devices[] = {
+	{"class", t_check,.dflt.check = "DEVICES"},
+	{"devices", t_array, STRUCTARRAY(devicelist.list,
+					 json_attrs_subdevice,
+					 &devicelist.ndevices)},
+	{NULL},
+    };
+    int status;
+
+    memset(&devicelist, '\0', sizeof(devicelist));
+    status = json_read_object(buf, json_attrs_devices, NULL);
+    if (status != 0) {
+	return status;
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    int i, status = 0;
+
+    status = json_devicelist_read(argv[1]);
+    printf("%d devices:\n", devicelist.ndevices);
+    for (i = 0; i < devicelist.ndevices; i++)
+	printf("%s @ %f\n", 
+	       devicelist.list[i].path, devicelist.list[i].activated);
+
+    if (status != 0)
+	puts(json_error_string(status));
+}
+--------------------------------------------------------
+
+Here is an example:
+
+--------------------------------------------------------
+$ example3 '{"devices":[{"path":"/dev/ttyUSB0",
+            "activated":1411468340}]}'
+1 devices:
+/dev/ttyUSB0 @ 1411468340.000000
+--------------------------------------------------------
+
+In this case, the STRUCTARRAY and STRUCTOBJECT macros are clues to
+what is going on.  STRUCTOBJECT is a thin wrapper around offsetof();
+STRUCTARRAY sets up the parser to walk through the array of
+structures, filling each element as it goes.
+
+More formally: structobject arrays are a way to parse a list of
+objects to a set of modifications to a corresponding array of C
+structs.  The trick is that the array object initialization has to
+specify both the C struct array's base address and the stride length
+(the size of the C struct).  If you initialize the offset fields with
+the correct offsetof calls, everything will work. Strings are
+supported but all string storage has to be inline in the struct.
+
+== Parsing Concatenated Objects ==
+
+The +end+ param of +json_read_object()+ can be re-used as the +cp+ param
+to the same. As a result, a simple loop can be used to parse streamed or
+concatenated root level JSON objects.
+
+.Example 4
+--------------------------------------------------------
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "mjson.h"
+
+#define ARR1_LENGTH 8
+
+static bool flag1;
+static int arr1[ARR1_LENGTH];
+static int arr1_count;
+
+const struct json_attr_t json_attrs_example4[] = {
+    {"flag1",      t_boolean,	.addr.boolean = &flag1},
+    {"arr1",       t_array,	.addr.array.element_type = t_integer,
+				.addr.array.arr.integers = arr1,
+				.addr.array.maxlen = ARR1_LENGTH,
+				.addr.array.count = &arr1_count},
+    {NULL},
+};
+
+int main(int argc, char *argv[])
+{
+    int i, status = 0;
+
+    const char* end = (const char*) argv[1] + strlen((const char*) argv[1]);
+    const char* cur = (const char*) argv[1];
+
+    while (cur < end) {
+	status = json_read_object(cur, json_attrs_example4, &cur);
+	printf("status: %d, flag1: %d\n", status, flag1);
+	for (i = 0; i < arr1_count; i++)
+	    printf("arr1 = %d\n", arr1[i]);
+        if (status != 0)
+	    puts(json_error_string(status));
+	arr1_count = 0;
+    }
+}
+--------------------------------------------------------
+
+Here is an example:
+
+--------------------------------------------------------
+$ ./example4 '{"flag1":true} {"flag1":0,"arr1":[10,20]}
+              {"flag1":1} {"flag1":7, "arr1":[30,40,50]'
+status: 0, flag1: 1
+status: 0, flag1: 0
+arr1 = 10
+arr1 = 20
+status: 0, flag1: 1
+status: 0, flag1: 1
+arr1 = 30
+arr1 = 40
+arr1 = 50
+--------------------------------------------------------
+
+(Test case 18 also illustrates how to use this feature.)
+
+== Some Grubby Details ==
+
+You have to specify the shape of the JSON you expect to parse in advance.
+
+The "shape" of a JSON object is the type signature of its
+attributes (and attribute values, and so on recursively down through
+all nestings of objects and arrays).  This parser is indifferent to
+the order of attributes at any level, but you have to tell it in
+advance what the type of each attribute value will be and where the
+parsed value will be stored. The template structures may supply
+default values to be used when an expected attribute is omitted.
+
+The preceding paragraph told one fib.  A single attribute may actually
+have a span of multiple specifications with different syntactically
+distinguishable types (e.g. string vs. real vs. integer vs. boolean,
+but not signed integer vs. unsigned integer).  The parser will match
+the right spec against the actual data.  (There's an instance 
+of this in Example 3.)
+
+The dialect this parses has some limitations.  First, it cannot
+recognize the JSON "null" value. Second, all elements of an array must
+be of the same type. Third, t_character may not be an array element
+(this restriction could be lifted, and might be in a future release).
+Third, both attribute names and string values have hard limits; these
+can be tweaked by modifying the header file.
+
+There are separate entry points for beginning a parse of either a JSON
+object or a JSON array. 
+
+JSON "float" quantities are actually stored as doubles.  Note that
+float parsing uses +atof(3)+ and is thus locale-sensitive - this
+affects whether period or comma is used as a decimal point.  If in any
+doubt, set the C numeric locale explicitly to match your data source.
+
+You should not assume that the numeric values of error codes are
+stable. Use the JSON_ERR_* names, not the numbers.
+
+We have been informed that it is possible to core-dump this code by
+passing NULL or bogus pointers to json_read_object(), so don't do
+that. There's no sanity check against bad arguments in order to
+keep the library small and light.
+
+== Advanced Usage ==
+
+This code is designed to be stripped down still further; do not be
+afraid to copy mjson.c and drop out the parts you don't need (but
+please leave in my name somewhere as original author).
+
+It is a good idea, when possible, to generate your parse-template
+structures programmatically from a higher-level description of the
+JSON. GPSD uses this technique extensively.
+
+// end

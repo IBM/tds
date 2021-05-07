@@ -1,0 +1,24 @@
+= microjson project news =
+
+1.6: 2020-07-12::
+   It's now possible to match all previously unspecified fields ignored.
+   Whitespace after values is now skpped properly in more circumstances.
+   Integer values 0 and 1 are accepted for bools.
+
+1.5: 2019-03-06::
+   It's now possible to read objects inside of objects (not just in arrays).
+
+1.4: 2018-08-09::
+   Add a belt-and suspenders bounds check side-ported from the GPSD code.
+
+1.3: 2014-09-28::
+   Add a time_t type that is an RFC3339 date, stored as Unix seconds.
+
+1.2: 2014-09-27::
+   Added a manual page.
+
+1.1: 2014-09-26::
+   Documentation improvements basde on initial feedback.
+
+1.0: 2014-09-25::
+   Initial release.

@@ -1,0 +1,22 @@
+# This is not a real Debian control file
+# It's project metadata for the shipper tool
+
+Package: microjson
+
+Description: Tiny JSON parser in C that uses only fixed-extent storage.
+ This code parses the largest subset of JSON that can be unpacked into static C
+ structures, without using malloc(3). It is very small and very low-footprint,
+ intended for use in constrained embedded environments.  It may also be of
+ interest for code where malloc is verboten to reduce reliability and security
+ vulnerabilities.
+
+Homepage: http://www.catb.org/~esr/microjson
+
+XBS-HTML-Target: index.html
+
+XBS-Repository-URL: https://gitlab.com/esr/microjson
+
+#XBS-Project-Tags: JSON, C
+
+XBS-VC-Tag-Template: %(version)s
+

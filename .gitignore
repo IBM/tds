@@ -1,0 +1,10 @@
+*.o
+*.jpg
+mas-demo
+data
+*.png
+*.jpg
+example*
+test_microjson
+release*
+predictions.log

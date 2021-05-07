@@ -1,0 +1,13 @@
+{
+	"darknet_home"       :  "/home/pi/Download/darknet-nnpack/",
+	"darknet_datacfg"    :  "cfg/coco.data",
+	"darknet_cfgfile"    :  "cfg/yolov3-tiny.cfg",
+	"darknet_weightfile" :  "yolov3-tiny.weights",
+	"input_image"        :  "./dog.jpg",
+	"input_stream_1"     :  "rtsp://augustojv:testrtsp@192.168.0.99/live",
+	"input_stream_2"     :  "",
+	"input_stream_3"     :  "",
+	"input_stream_4"     :  "",
+	"input_stream_5"     :  "",
+	"input_stream_6"     :  ""
+}

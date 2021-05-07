@@ -1,0 +1,75 @@
+= mjson(3) =
+:doctype: manpage
+
+== NAME ==
+mjson - fast parse of JSON to fixed-extent C structures
+
+== FUNCTIONS ==
+
+----------------------------------------------------
+#include "mjson.h"
+
+int json_read_object(const char *, const struct json_attr_t *, const char **);
+
+int json_read_array(const char *, const struct json_array_t *, const char **);
+
+const char *json_error_string(int);
+
+void json_enable_debug(int, FILE *);
+----------------------------------------------------
+
+== DESCRIPTION ==
++json_read_object()+ attempts to parse a whole JSON object from the
+buffer pointed at by the first argument.  The second argument points
+at an array of template structures describing the expected shape of 
+the JSON object (that is, the set of attribute names and their
+expected value types. order-independent) and specifying for each 
+attribute a C address where the parsed value should ve deivered.
+The third argument, if non-null, is where a copy of a pointer
+to just past the parsed object  is placed.
+
++json_read_object()+ attempts to parse a whole JSON object from the
+buffer pointed at by the first argument.  The second argument points
+at a template structure describing the array's element type and where
+successive elements are to be placed. The third argument, if non-null,
+is where a copy of a pointer to just past the parsed object is placed.
+
+Objects may contain objects or arrays as attribute values, and an
+array may be composed of JSON objects.  These functions mutually
+recurse as required. (Arrays within arrays are currently not
+supported; this may change in a future release.)
+
++void json_enable_debug(int, FILE *)+ enables the generation of trace
+messages to the indicated file pointer while parsing.
+
+For details on how to build template structures, consult the document
+_Building Static JSON Parsers With Microjson_ shipped with the
+distribution.
+
+== RETURN VALUE ==
+The two main functions return 0 for success, a nonzero error code for
+failure.  The function +json_error_string()+ maps error codes to
+explanatory messages.
+
+When an error is returned and the end pointer (third) argument is
+non-null, it is filled with the value of the buffer pointer at the
+time the error was thrown.
+
+== BUGS ==
+A backslash escape of "\0000" in a string value will drop a NUL in the 
+string that is likely to confuse C code looking at the storage.  In
+general, the high byte of a \uxxxxx escape will be ignored and the
+ASCII high-half byte named by the last two hex digits will be
+inserted in the string.
+
+There is no way to make a parser accept the typeless special JSON
+value "null", because there is nothing in C's type ontology to map it
+to. 
+
+JSON arrays are restricted to having a single homogenous element type.
+However, the type may itself be a JSON object.
+
+== REPORTING BUGS ==
+Report bugs to Eric S. Raymond <esr@thyrsus.com>.  The project page is
+at http://catb.org/~esr/microjson
+

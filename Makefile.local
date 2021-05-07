@@ -1,0 +1,24 @@
+CC = gcc
+CFLAGS = -I. -I/home/augustojv/devel-workspace/darknet/include -pedantic -Wall
+LDFLAGS = -L/home/augustojv/devel-workspace/darknet/ -ldarknet
+DEPS =
+OBJ = mas-demo-main.o
+MJSONDIR = utils/microjson-1.6
+
+all: $(MJSONDIR) mas-demo
+
+$(MJSONDIR):
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+        
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+mas-demo: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJSONDIR)/mjson.o
+
+.PHONY: all clean $(MJSONDIR)
+
+clean:
+	rm -f *.o mas-demo
+	$(MAKE) -C $(MJSONDIR) clean
+ 

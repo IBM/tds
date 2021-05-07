@@ -1,0 +1,14 @@
+= README for microjson =
+
+This is a tiny JSON parser in C that uses only fixed-extent storage.
+
+This code parses the largest subset of JSON that can be unpacked into
+static C structures, without using malloc(3). It is very small and
+very low-footprint, intended for use in constrained embedded
+environments. It may also be of interest for code where malloc is
+verboten to reduce reliability and security vulnerabilities.
+
+Apologies about the name collision; I didn't think to check for other
+projects with this name when I first created it.
+
+There's a manual page, link:mjson.html[], and a tutorial: link:microjson.html[]
