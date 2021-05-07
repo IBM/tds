@@ -16,7 +16,7 @@ TDS for Raspberry Pi requires:
 
 We really do not need OpenCV for this version of TDS; so it is safe to skip instructions related to OpenCV installation :)
 
-__(optional) Static linking: __ If static linking against `darknet-nnpack` is needed to generate one single binary file, then some changes are needed to build `nnpack` (`nnpack`, not `darknet-nnpack`). Specifically, the following command has to be used:
+**(optional) Static linking**: If static linking against `darknet-nnpack` is needed to generate one single binary file, then some changes are needed to build `nnpack` (`nnpack`, not `darknet-nnpack`). Specifically, the following command has to be used:
 
 ```
 cmake -G Ninja -DNNPACK_LIBRARY_TYPE=static ..
@@ -59,7 +59,7 @@ We also need to create a soft link to the YOLOv3/Darknet `data` folder in our TD
 
 ```
 cd tds/
-ln -s <darknet-nnpack home>/data/
+ln -s <darknet-home>/data/
 ```
 
 Finally, we can run TDS:
