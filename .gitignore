@@ -8,3 +8,4 @@ test_microjson
 release*
 predictions.log
 example?
+my_conf_*
