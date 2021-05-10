@@ -23,6 +23,8 @@
 #include <assert.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <errno.h>
 #include "darknet.h"
 #include "utils/microjson-1.6/mjson.h"
 
@@ -68,7 +70,8 @@ typedef struct {
 
 int parse_config_file(char *filename, conf_params_t *conf_params)
 {
-  printf("Using JSON config file %s\n", filename);
+  printf("Config file:   %s\n", filename);
+
   FILE *f = fopen(filename, "rb");
   if (f == NULL) {
       printf("ERROR: cannot open %s\n", filename);
@@ -281,26 +284,36 @@ void sig_handler(int signo)
 int main(int argc, char *argv[])
 {
 
-  if (argc != 2) {
-    printf("Usage: ./mas-demo <JSON config file>\n");
+  if (argc < 2 || argc > 3) {
+    printf("Usage: ./mas-demo <JSON config file> [log subdir]\n");
     exit(-1);
   }
 
   signal(SIGINT, sig_handler);
-  printf("PID: %d\n", getpid());
+  printf("PID:           %d\n", getpid());
 
 
   /*************************************************************************************/
   /* Create sub-directory for this specific run (we chdir later in the code below)     */
   /*************************************************************************************/
-  time_t t = time(NULL);
-  struct tm tm = *localtime(&t);
-  char dir_name[100];
-  snprintf(dir_name, 512, "run_y%dm%02dd%02d_h%02dm%02ds%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-  if (mkdir(dir_name, 0777) == -1) {
-    printf("ERROR: cannot create run directory %s\n", dir_name);
+  char *dir_name;
+  if (argc == 3)
+    // The use provided a subdir name; let's use it (we assumed it was already created)
+    dir_name = argv[2];
+  else
+    dir_name = ".";
+
+  // Check if directory exists
+  DIR* dir = opendir(dir_name);
+  if (dir)
+    // Directory exists
+    closedir(dir);
+  else if (ENOENT == errno) {
+    // Directory does not exist
+    printf("ERROR: directory %s doesn't exist\n", dir_name);
     exit(-1);
   }
+  printf("Run directory: %s\n", dir_name);
 
 
   /*************************************************************************************/
@@ -339,6 +352,7 @@ int main(int argc, char *argv[])
   printf("Data config:   %s\n", datacfg);
   printf("Model config:  %s\n", cfgfile);
   printf("Weights:       %s\n", weightfile);
+  printf("\n");
 
   list *options = read_data_cfg(datacfg);
   metadata meta = get_metadata(datacfg);
@@ -478,6 +492,14 @@ int main(int argc, char *argv[])
     free_detections(dets, nboxes);
     free_image(im);
     free_image(sized);
+
+
+    /*************************************************************************************/
+    /* Show signs of life                                                                */
+    /*************************************************************************************/
+    if(access("alive", F_OK ) == 0)
+      // File 'alive' exists; delete it
+      remove("alive");
 
     count++;
 
