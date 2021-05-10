@@ -10,10 +10,12 @@ TDS has been successfully built and executed using the following set-up:
 
 TDS for Ubuntu/x86 requires:
  - [darknet](https://pjreddie.com/darknet/yolo/)
+ - [ffmpeg](https://www.ffmpeg.org) (installable with `sudo apt install ffmpeg`)
 
 TDS for Raspberry Pi requires:
  - [darknet-nnpack](https://github.com/digitalbrain79/darknet-nnpack) (a good tutorial [here](https://egemenertugrul.github.io/blog/Darknet-NNPACK-on-Raspberry-Pi/))
-
+ - [ffmpeg](https://www.ffmpeg.org) (installable with `sudo apt install ffmpeg`)
+ 
 We really do not need OpenCV for this version of TDS; so it is safe to skip instructions related to OpenCV installation :)
 
 **(optional) Static linking**: If static linking against `darknet-nnpack` is needed to generate one single binary file, then some changes are needed to build `nnpack` (`nnpack`, not `darknet-nnpack`). Specifically, the following command has to be used:
