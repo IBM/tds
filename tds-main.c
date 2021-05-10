@@ -501,6 +501,11 @@ int main(int argc, char *argv[])
       // File 'alive' exists; delete it
       remove("alive");
 
+
+    fflush(stdout);
+    fflush(stderr);
+    fflush(fp);
+
     count++;
 
   } while (!exit_loop);

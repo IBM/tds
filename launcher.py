@@ -24,11 +24,15 @@ import sys
 from datetime import datetime
 from sys import stdout, stderr
 
-launcher_output = open('launcher.out', 'a')
-
 def log_msg(msg):
     timestamp = datetime.now()
     return '[' + str(timestamp) + ']\t' + msg + '\n'
+
+if (len(sys.argv) != 2):
+    print('Usage: ' + sys.argv[0] + ' <JSON config file>')
+    sys.exit(-1)
+
+launcher_output = open('launcher.out', 'a')
 
 while (True):
         
@@ -39,18 +43,17 @@ while (True):
     os.makedirs(sim_dir)
 
     tds_output = open(sim_dir + '/tds.out', 'wb')
-    cmd = ['./tds', './conf_local.json', sim_dir]
+    cmd = ['./tds', sys.argv[1], sim_dir]
     launcher_output.write(log_msg('Launching command ' + ' '.join(cmd)))
     launcher_output.flush()
     
     proc = subprocess.Popen(cmd, stdout=tds_output, stderr=tds_output)
     alive = True
-    #sys.exit()
     
     while (alive):
 
         open(sim_dir + '/alive','w')
-        time.sleep(10)
+        time.sleep(30)
         if (os.path.isfile(sim_dir + '/alive')):
             # The TDS program didn't remove the alive file.
             # This means that the TDS program hung or isn't
