@@ -413,13 +413,13 @@ int main(int argc, char *argv[])
     pipein  = get_pipe(pipe_id, input);
     i++;
     if (pipein == NULL) continue;
-    printf("Reading from pipe %d (%p)\n", pipe_id, (void *)pipein);
+    printf("Reading from pipe %d (%p)\n", pipe_id, (void *)pipein); fflush(stdout);
     curr_time = what_time_is_it_now();
     size_t size = fread(data, 1, dimensions.width*dimensions.height*dimensions.c, pipein);
     read_time = (what_time_is_it_now()-curr_time);
     //printf("Data read in %f seconds.\n", what_time_is_it_now()-curr_time);
     if (size != dimensions.width*dimensions.height*dimensions.c) {
-      printf("Warning: %zu bytes read (expected: %d)!\n", size, dimensions.width*dimensions.height*dimensions.c);
+      printf("Warning: %zu bytes read (expected: %d)!\n", size, dimensions.width*dimensions.height*dimensions.c); fflush(stdout);
       sleep(1);
       continue;
     }
