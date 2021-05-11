@@ -29,7 +29,8 @@
 #include "utils/microjson-1.6/mjson.h"
 
 #define FFPROBE_CMD "ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 %s"
-#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -rtsp_transport tcp -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
+//#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -rtsp_transport tcp -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
+#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
 
 static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90};
 
@@ -424,6 +425,7 @@ int main(int argc, char *argv[])
     printf("Reading from pipe %d (%p)\n", pipe_id, (void *)pipein); fflush(stdout);
     curr_time = what_time_is_it_now();
     size_t size = fread(data, 1, dimensions.width*dimensions.height*dimensions.c, pipein);
+    printf("Read %d\n", size); fflush(stdout);
     read_time = (what_time_is_it_now()-curr_time);
     //printf("Data read in %f seconds.\n", what_time_is_it_now()-curr_time);
     if (size != dimensions.width*dimensions.height*dimensions.c) {
