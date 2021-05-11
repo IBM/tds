@@ -277,7 +277,11 @@ FILE *get_pipe(int i, input_t input)
 
 void sig_handler(int signo)
 {
-  if (signo == SIGINT) exit_loop = true;
+  if (signo == SIGINT) {
+    exit_loop = true;
+    fflush(stdout);
+    fflush(stderr);
+  }
 }
 
 
@@ -416,6 +420,7 @@ int main(int argc, char *argv[])
     //printf("Data read in %f seconds.\n", what_time_is_it_now()-curr_time);
     if (size != dimensions.width*dimensions.height*dimensions.c) {
       printf("Warning: %zu bytes read (expected: %d)!\n", size, dimensions.width*dimensions.height*dimensions.c);
+      sleep(1);
       continue;
     }
 
@@ -507,6 +512,7 @@ int main(int argc, char *argv[])
     fflush(fp);
 
     count++;
+    sleep(1);
 
   } while (!exit_loop);
 

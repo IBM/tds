@@ -24,9 +24,14 @@ import sys
 from datetime import datetime
 from sys import stdout, stderr
 
+
+TIMEOUT = 30  # seconds
+
+
 def log_msg(msg):
     timestamp = datetime.now()
     return '[' + str(timestamp) + ']\t' + msg + '\n'
+
 
 if (len(sys.argv) != 2):
     print('Usage: ' + sys.argv[0] + ' <JSON config file>')
@@ -53,7 +58,7 @@ while (True):
     while (alive):
 
         open(sim_dir + '/alive','w')
-        time.sleep(30)
+        time.sleep(TIMEOUT)
         if (os.path.isfile(sim_dir + '/alive')):
             # The TDS program didn't remove the alive file.
             # This means that the TDS program hung or isn't
@@ -61,7 +66,7 @@ while (True):
             proc.terminate()
             alive = False
             tds_output.close()
-            launcher_output.write(log_msg('TDS application did not respond (restarting it)'))
+            launcher_output.write(log_msg('TDS application did not respond for ' + str(TIMEOUT) + ' sec (restarting it)'))
             launcher_output.flush()
         else:
             launcher_output.write(log_msg('TDS application is alive'))
