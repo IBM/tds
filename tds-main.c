@@ -402,9 +402,17 @@ int main(int argc, char *argv[])
 
   chdir(dir_name);
   FILE *fp = fopen("predictions.log", "w");
-  fprintf(fp, "cam_id,time,object_id,object_name,prob,avg_read_time_sec,avg_conv_time_sec,avg_pred_time_sec,bbox_time_sec\n");
+  fprintf(fp, "cam_id,time,object_id,object_name,prob,read_time_sec,conv_time_sec,pred_time_sec,bbox_time_sec\n");
 
   do {
+
+    /*************************************************************************************/
+    /* Show signs of life                                                                */
+    /*************************************************************************************/
+    if(access("alive", F_OK ) == 0)
+      // File 'alive' exists; delete it
+      remove("alive");
+
 
     /*************************************************************************************/
     /* Capture image to process                                                          */
@@ -497,14 +505,6 @@ int main(int argc, char *argv[])
     free_detections(dets, nboxes);
     free_image(im);
     free_image(sized);
-
-
-    /*************************************************************************************/
-    /* Show signs of life                                                                */
-    /*************************************************************************************/
-    if(access("alive", F_OK ) == 0)
-      // File 'alive' exists; delete it
-      remove("alive");
 
 
     fflush(stdout);
