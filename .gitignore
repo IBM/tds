@@ -9,3 +9,5 @@ release*
 predictions.log
 example?
 my_conf_*
+run_*
+launcher.out

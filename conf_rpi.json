@@ -1,5 +1,5 @@
 {
-	"darknet_home"       :  "",
+	"darknet_home"       :  "<replace with your darknet home>",
 	"darknet_datacfg"    :  "cfg/coco.data",
 	"darknet_cfgfile"    :  "cfg/yolov3-tiny.cfg",
 	"darknet_weightfile" :  "yolov3-tiny.weights",
