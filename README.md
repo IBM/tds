@@ -24,7 +24,7 @@ We really do not need OpenCV for this version of TDS; so it is safe to skip inst
 cmake -G Ninja -DNNPACK_LIBRARY_TYPE=static ..
 ```
 
-This generates `libnnpack.a` and `libpthreadpool.a`, which need to be included during linking time of the `tds` executable.
+This generates `libnnpack.a` and `libpthreadpool.a`, which are included during linking time of the `tds` executable.
 
 
 ## Usage
