@@ -18,7 +18,7 @@ TDS for Raspberry Pi requires:
  
 We really do not need OpenCV for this version of TDS; so it is safe to skip instructions related to OpenCV installation :)
 
-**Static linking**: In the specific Raspberry Pi case, for convenience we _statically_ build the application (`-static`). Because of this, we also need to statically build `nnpack` (`nnpack`, not `darknet-nnpack`) using the following command:
+**Static linking**: In the specific Raspberry Pi case, for convenience we build the application _statically_ (`-static`). Because of this, we also need to statically build `nnpack` (`nnpack`, not `darknet-nnpack`) using the following command:
 
 ```
 cmake -G Ninja -DNNPACK_LIBRARY_TYPE=static ..
