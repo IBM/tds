@@ -48,7 +48,7 @@ while (True):
     os.makedirs(sim_dir)
 
     tds_output = open(sim_dir + '/tds.out', 'wb')
-    cmd = ['./tds', sys.argv[1], sim_dir]
+    cmd = ['./tds', '-c', sys.argv[1], '-d', sim_dir, '-l', 'predictions.out']
     launcher_output.write(log_msg('Launching command ' + ' '.join(cmd)))
     launcher_output.flush()
     

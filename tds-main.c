@@ -31,6 +31,8 @@
 #define FFPROBE_CMD "ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 %s"
 //#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -rtsp_transport tcp -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
 #define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
+#define CAMS 6
+#define CATEGS 80
 
 static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90};
 
@@ -286,46 +288,116 @@ void sig_handler(int signo)
 }
 
 
+void print_usage(char * pname)
+{
+  printf("Usage: %s <OPTIONS>\n", pname);
+  printf(" OPTIONS:\n");
+  printf("    -h          : print this helpful usage info\n");
+  printf("    -c <file>   : JSON configuration file to use\n");
+  printf("    -d <dir>    : directory for this run (i.e. where all logs and output will be placed)\n");
+  printf("                :      Optional (default: current directory)\n");
+  printf("    -l <file>   : global log file where we append the classification results during the run\n");
+  printf("                :      Optional (default: no global logging)\n");
+}
+
+
+void to_json_string(short sequence[CAMS][CATEGS], char *sequence_str)
+{
+  time_t timestamp;
+  int cam, categ;
+  char tmp[10];
+
+  time(&timestamp);
+
+  sprintf(sequence_str, "{\"ts\":\"%ld\",", timestamp);
+  for (cam=0; cam<CAMS; cam++) {
+    strcat(sequence_str, "\"");
+    sprintf(tmp, "%d", cam+1);
+    strcat(sequence_str, tmp);
+    strcat(sequence_str, "\":[");
+    for (categ=0; categ<CATEGS; categ++)
+      if (sequence[cam][categ] != -1) {
+        strcat(sequence_str, "\"");
+        sprintf(tmp, "%d", coco_ids[categ]);
+        strcat(sequence_str, tmp);
+        strcat(sequence_str, "\",");
+      }
+    if (sequence_str[strlen(sequence_str)-1] == ',')
+      sequence_str[strlen(sequence_str)-1] = '\0';  // Remove last comma
+    strcat(sequence_str, "],");
+  }
+  sequence_str[strlen(sequence_str)-1] = '\0';  // Remove last comma
+  strcat(sequence_str, "}");
+}
+
+
 int main(int argc, char *argv[])
 {
 
-  if (argc < 2 || argc > 3) {
-    printf("Usage: ./mas-demo <JSON config file> [log subdir]\n");
+  char confile[256];
+  char dirname[256];
+  char logfile[256];
+  confile[0] = '\0';
+  logfile[0] = '\0';
+  strcpy(dirname, ".");
+  int option;
+
+  while ((option = getopt(argc, argv, ":hc:d:l:")) != -1) {
+    switch(option) {
+      case 'h':
+        print_usage(argv[0]);
+        exit(0);
+      case 'c':
+	snprintf(confile, 255, "%s", optarg);
+	break;
+      case 'd':
+	snprintf(dirname, 255, "%s", optarg);
+	break;
+      case 'l':
+	snprintf(logfile, 255, "%s", optarg);
+	break;
+      case ':':
+	printf("Option %c needs a value\n", optopt);
+	exit(-1);
+      case '?':
+	printf("Unknown option: %c\n", optopt);
+	exit(-1);
+    }
+  }
+
+  if (confile[0] == '\0') {
+    printf("ERROR: a JSON configuration file was not specified\n");
+    print_usage(argv[0]);
     exit(-1);
   }
 
+  FILE *fp_log = NULL;
+  if (logfile[0] != '\0')
+    fp_log = fopen(logfile, "a");
+
   signal(SIGINT, sig_handler);
-  printf("PID:           %d\n", getpid());
 
 
   /*************************************************************************************/
   /* Create sub-directory for this specific run (we chdir later in the code below)     */
   /*************************************************************************************/
-  char *dir_name;
-  if (argc == 3)
-    // The use provided a subdir name; let's use it (we assumed it was already created)
-    dir_name = argv[2];
-  else
-    dir_name = ".";
-
   // Check if directory exists
-  DIR* dir = opendir(dir_name);
+  DIR* dir = opendir(dirname);
   if (dir)
     // Directory exists
     closedir(dir);
   else if (ENOENT == errno) {
     // Directory does not exist
-    printf("ERROR: directory %s doesn't exist\n", dir_name);
+    printf("ERROR: directory %s doesn't exist\n", dirname);
     exit(-1);
   }
-  printf("Run directory: %s\n", dir_name);
 
 
   /*************************************************************************************/
   /* Parse JSON configuration file                                                     */
   /*************************************************************************************/
   conf_params_t conf_params;
-  if (parse_config_file(argv[1], &conf_params) != 0) {
+  if (parse_config_file(confile, &conf_params) != 0) {
     printf("ERROR: cannot parse JSON configuration file\n");
     exit(-1);
   }
@@ -353,6 +425,8 @@ int main(int argc, char *argv[])
   float thresh       = .5;
   float hier_thresh  = .5;
 
+  printf("PID:           %d\n", getpid());
+  printf("Run directory: %s\n", dirname);
   printf("Darknet home:  %s\n", conf_params.darknet_home);
   printf("Data config:   %s\n", datacfg);
   printf("Model config:  %s\n", cfgfile);
@@ -387,7 +461,7 @@ int main(int argc, char *argv[])
   }
 
   unsigned char *data = malloc(sizeof(unsigned char)*dimensions.width*dimensions.height*dimensions.c);
-  unsigned long count = 0, i = 0;
+  unsigned long count = 0, n = 0;
 
   // Some statistics
   double read_time       = 0;
@@ -396,14 +470,17 @@ int main(int argc, char *argv[])
   double boxing_time     = 0;
 
   FILE *pipein;
-  int pipe_id;
+  int cam_id;
   char outfile[300];
   time_t timestamp;
   bool object_detected;
+  short sequence[CAMS][CATEGS];
+  char sequence_str[3000];
+  bool first_time = true;
 
-  chdir(dir_name);
-  FILE *fp = fopen("predictions.log", "w");
-  fprintf(fp, "cam_id,time,object_id,object_name,prob,read_time_sec,conv_time_sec,pred_time_sec,bbox_time_sec\n");
+  chdir(dirname);
+  FILE *fp_pred = fopen("predictions.log", "w");
+  fprintf(fp_pred, "cam_id,time,object_id,object_name,prob,read_time_sec,conv_time_sec,pred_time_sec,bbox_time_sec\n");
 
   do {
 
@@ -418,14 +495,32 @@ int main(int argc, char *argv[])
     /*************************************************************************************/
     /* Capture image to process                                                          */
     /*************************************************************************************/
-    pipe_id = (i % 6) + 1;
-    pipein  = get_pipe(pipe_id, input);
-    i++;
+    cam_id = (n % CAMS) + 1;
+
+    if (cam_id == 1) {
+      // We start a new camera "sequence" (cam1, cam2, cam3, cam4, cam5, cam6). We keep all
+      // the classification results for a given sequence together for logging convenience
+
+      // First dump the previous sequence to the global logfile (if specified) in JSON format
+      if (fp_log != NULL && !first_time) {
+        to_json_string(sequence, sequence_str);
+        fprintf(fp_log, "%s\n", sequence_str);
+        fflush(fp_log);
+      }
+      // We start the new sequence
+      int cam, categ;
+      for (cam=0; cam<CAMS; cam++)
+	for (categ=0; categ<CATEGS; categ++)
+	  sequence[cam][categ] = -1;
+      first_time = false;
+    }
+
+    pipein = get_pipe(cam_id, input); n++;
     if (pipein == NULL) continue;
-    printf("Reading from pipe %d (%p)\n", pipe_id, (void *)pipein); fflush(stdout);
+    printf("Reading from pipe %d (%p)\n", cam_id, (void *)pipein); fflush(stdout);
     curr_time = what_time_is_it_now();
     size_t size = fread(data, 1, dimensions.width*dimensions.height*dimensions.c, pipein);
-    printf("Read %d\n", size); fflush(stdout);
+    //printf("Read %d\n", size); fflush(stdout);
     read_time = (what_time_is_it_now()-curr_time);
     //printf("Data read in %f seconds.\n", what_time_is_it_now()-curr_time);
     if (size != dimensions.width*dimensions.height*dimensions.c) {
@@ -478,8 +573,8 @@ int main(int argc, char *argv[])
       for(j = 0; j < meta.classes; ++j) {
 	if (dets[i].prob[j]) {
           // Logging to text file
-	  fprintf(fp, "%d,%ld,%d,%s,%.4f,%.4f,%.4f,%.4f,%.4f\n",
-                                          pipe_id,
+	  fprintf(fp_pred, "%d,%ld,%d,%s,%.4f,%.4f,%.4f,%.4f,%.4f\n",
+                                          cam_id,
                                           timestamp,
                                           coco_ids[j],
 					  names[j],
@@ -489,6 +584,7 @@ int main(int argc, char *argv[])
 					  prediction_time,
 					  boxing_time
 					  );
+	  sequence[cam_id-1][j] = 1;
 	  object_detected = true;
 	}
       }
@@ -496,7 +592,7 @@ int main(int argc, char *argv[])
     
     if (object_detected) {
       // We just log images where objects were detected
-      snprintf(outfile, 270, "cam_%d_frame_%05ld", pipe_id, count);
+      snprintf(outfile, 270, "cam_%d_frame_%05ld", cam_id, count);
       save_image(im, outfile);
     }
 
@@ -511,18 +607,27 @@ int main(int argc, char *argv[])
 
     fflush(stdout);
     fflush(stderr);
-    fflush(fp);
+    fflush(fp_pred);
 
     count++;
     sleep(1);
 
   } while (!exit_loop);
 
+
   // Flush and close input and output pipes
   close_input_pipes(input);
   free(data);
   free_network(net);
-  fclose(fp);
+  fclose(fp_pred);
+
+  if (fp_log != NULL) {
+    to_json_string(sequence, sequence_str);
+    fprintf(fp_log, "%s\n", sequence_str);
+  }
+  fflush(fp_log);
+  fclose(fp_log);
+
 
 #ifdef NNPACK
   pthreadpool_destroy(net->threadpool);
