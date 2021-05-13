@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I. -I/home/pi/Download/darknet-nnpack/include -pedantic -Wall -DNNPACK
+CFLAGS = -I. -I/home/pi/Download/darknet-nnpack/include -pedantic -Wall -DNNPACK -O3
 LDFLAGS = -static -L/home/pi/Download/darknet-nnpack -L/home/pi/Download/NNPACK/build -L/home/pi/Download/NNPACK/build/deps/pthreadpool -ldarknet -lnnpack -lpthreadpool -lpthread -lm
 DEPS =
 OBJ = tds-main.o

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I. -I/home/augustojv/devel-workspace/darknet/include -pedantic -Wall
+CFLAGS = -I. -I/home/augustojv/devel-workspace/darknet/include -pedantic -Wall -O3
 LDFLAGS = -L/home/augustojv/devel-workspace/darknet/ -ldarknet
 DEPS =
 OBJ = tds-main.o
