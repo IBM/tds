@@ -474,6 +474,7 @@ int main(int argc, char *argv[])
   char outfile[300];
   time_t timestamp;
   bool object_detected;
+  int read_attempt = 0;
   short sequence[CAMS][CATEGS];
   char sequence_str[3000];
   bool first_time = true;
@@ -520,14 +521,19 @@ int main(int argc, char *argv[])
     printf("Reading from pipe %d (%p)\n", cam_id, (void *)pipein); fflush(stdout);
     curr_time = what_time_is_it_now();
     size_t size = fread(data, 1, dimensions.width*dimensions.height*dimensions.c, pipein);
+    read_attempt++;
     //printf("Read %d\n", size); fflush(stdout);
     read_time = (what_time_is_it_now()-curr_time);
-    //printf("Data read in %f seconds.\n", what_time_is_it_now()-curr_time);
-    if (size != dimensions.width*dimensions.height*dimensions.c) {
+    if (size == 0 || size != dimensions.width*dimensions.height*dimensions.c) {
       printf("Warning: %zu bytes read (expected: %d)!\n", size, dimensions.width*dimensions.height*dimensions.c); fflush(stdout);
+      if (read_attempt == 30) {
+        printf("Tried 30 reading attempts. Now quitting.\n"); fflush(stdout);
+        exit_loop = true;
+      }
       sleep(1);
       continue;
     }
+    read_attempt = 0;
 
     // Convert raw image into YOLO/Darknet image format
     curr_time = what_time_is_it_now();
