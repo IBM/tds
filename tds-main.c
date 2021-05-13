@@ -36,7 +36,8 @@
 
 static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90};
 
-bool exit_loop = false;
+bool exit_loop      = false;
+unsigned int tds_id = 0;
 
 typedef struct {
   char darknet_home[512];
@@ -309,7 +310,7 @@ void to_json_string(short sequence[CAMS][CATEGS], char *sequence_str)
 
   time(&timestamp);
 
-  sprintf(sequence_str, "{\"ts\":\"%ld\",", timestamp);
+  sprintf(sequence_str, "{\"id\":\"%d\",\"ts\":\"%ld\",", tds_id, timestamp);
   for (cam=0; cam<CAMS; cam++) {
     strcat(sequence_str, "\"");
     sprintf(tmp, "%d", cam+1);
@@ -342,7 +343,7 @@ int main(int argc, char *argv[])
   strcpy(dirname, ".");
   int option;
 
-  while ((option = getopt(argc, argv, ":hc:d:l:")) != -1) {
+  while ((option = getopt(argc, argv, ":hc:d:l:i:")) != -1) {
     switch(option) {
       case 'h':
         print_usage(argv[0]);
@@ -355,6 +356,9 @@ int main(int argc, char *argv[])
 	break;
       case 'l':
 	snprintf(logfile, 255, "%s", optarg);
+	break;
+      case 'i':
+	tds_id = atoi(optarg);
 	break;
       case ':':
 	printf("Option %c needs a value\n", optopt);
@@ -426,6 +430,7 @@ int main(int argc, char *argv[])
   float hier_thresh  = .5;
 
   printf("PID:           %d\n", getpid());
+  printf("TDS instance:  %d\n", tds_id);
   printf("Run directory: %s\n", dirname);
   printf("Darknet home:  %s\n", conf_params.darknet_home);
   printf("Data config:   %s\n", datacfg);
@@ -616,7 +621,7 @@ int main(int argc, char *argv[])
     fflush(fp_pred);
 
     count++;
-    sleep(1);
+    sleep(5);
 
   } while (!exit_loop);
 

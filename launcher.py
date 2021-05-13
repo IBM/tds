@@ -25,7 +25,7 @@ from datetime import datetime
 from sys import stdout, stderr
 
 
-TIMEOUT = 30  # seconds
+TIMEOUT = 120  # seconds
 
 
 def log_msg(msg):
@@ -39,6 +39,8 @@ if (len(sys.argv) != 2):
 
 launcher_output = open('launcher.out', 'a')
 
+tds_id = 0
+
 while (True):
         
     # Create subdirectory to keep all log and output files associated with this run
@@ -48,7 +50,7 @@ while (True):
     os.makedirs(sim_dir)
 
     tds_output = open(sim_dir + '/tds.out', 'wb')
-    cmd = ['./tds', '-c', sys.argv[1], '-d', sim_dir, '-l', 'predictions.out']
+    cmd = ['./tds', '-c', sys.argv[1], '-d', sim_dir, '-l', 'predictions.out', '-i', str(tds_id)]
     launcher_output.write(log_msg('Launching command ' + ' '.join(cmd)))
     launcher_output.flush()
     
@@ -68,6 +70,7 @@ while (True):
             tds_output.close()
             launcher_output.write(log_msg('TDS application did not respond for ' + str(TIMEOUT) + ' sec (restarting it)'))
             launcher_output.flush()
+            tds_id += 1
         else:
             launcher_output.write(log_msg('TDS application is alive'))
             launcher_output.flush()
