@@ -299,6 +299,8 @@ void print_usage(char * pname)
   printf("                :      Optional (default: current directory)\n");
   printf("    -l <file>   : global log file where we append the classification results during the run\n");
   printf("                :      Optional (default: no global logging)\n");
+  printf("    -i <id>     : integer id to assign to this run\n");
+  printf("                :      Optional (default: 0)\n");
 }
 
 

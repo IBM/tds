@@ -27,7 +27,9 @@ cmake -G Ninja -DNNPACK_LIBRARY_TYPE=static ..
 This generates `libnnpack.a` and `libpthreadpool.a`, which are included during linking time of the `tds` executable.
 
 
-## Usage
+## Installation and Execution
+
+### Build and Configuration
 
 The installation and execution are fairly standard. For Ubuntu/x86 systems:
 
@@ -64,12 +66,27 @@ cd tds/
 ln -s <darknet-home>/data/
 ```
 
-Finally, we can run TDS:
+### Usage
 
 ```
-./tds ./conf.json
+./tds -h
+Usage: ./tds <OPTIONS>
+ OPTIONS:
+    -h          : print this helpful usage info
+    -c <file>   : JSON configuration file to use
+    -d <dir>    : directory for this run (i.e. where all logs and output will be placed)
+                :      Optional (default: current directory)
+    -l <file>   : global log file where we append the classification results during the run
+                :      Optional (default: no global logging)
+    -i <id>     : integer id to assign to this run
+                :      Optional (default: 0)
 ```
 
+`-c` is the only mandatory argument, which specifies the JSON configuration file to use. So in its simplest form, TDS can be executed with the following command:
+
+```
+./tds -c ./conf.json
+```
 
 
 ## Contributors and Current Maintainers
