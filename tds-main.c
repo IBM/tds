@@ -312,7 +312,7 @@ void to_json_string(short sequence[CAMS][CATEGS], char *sequence_str)
 
   time(&timestamp);
 
-  sprintf(sequence_str, "{\"id\":\"%d\",\"ts\":\"%ld\",", tds_id, timestamp);
+  sprintf(sequence_str, "{\"id\":%d,\"ts\":%ld,", tds_id, timestamp);
   for (cam=0; cam<CAMS; cam++) {
     strcat(sequence_str, "\"");
     sprintf(tmp, "%d", cam+1);
@@ -320,10 +320,11 @@ void to_json_string(short sequence[CAMS][CATEGS], char *sequence_str)
     strcat(sequence_str, "\":[");
     for (categ=0; categ<CATEGS; categ++)
       if (sequence[cam][categ] != -1) {
-        strcat(sequence_str, "\"");
+        //strcat(sequence_str, "\"");
         sprintf(tmp, "%d", coco_ids[categ]);
         strcat(sequence_str, tmp);
-        strcat(sequence_str, "\",");
+        strcat(sequence_str, ",");
+        //strcat(sequence_str, "\",");
       }
     if (sequence_str[strlen(sequence_str)-1] == ',')
       sequence_str[strlen(sequence_str)-1] = '\0';  // Remove last comma
