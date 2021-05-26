@@ -35,6 +35,8 @@
 #define CAMS 6
 #define CATEGS 80
 
+const char *build_str = "This build was compiled at " __DATE__ ", " __TIME__ ".";
+
 static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90};
 
 bool exit_loop      = false;
@@ -347,6 +349,12 @@ int main(int argc, char *argv[])
   strcpy(dirname, ".");
   int option;
 
+  printf("------------------------------------------------------------------------------------\n");
+  printf(" Starting TDS\n");
+  printf(" %s\n", build_str);
+  printf("------------------------------------------------------------------------------------\n\n");
+  fflush(stdout);
+
   while ((option = getopt(argc, argv, ":hc:d:l:i:")) != -1) {
     switch(option) {
       case 'h':
@@ -433,14 +441,16 @@ int main(int argc, char *argv[])
   float thresh       = .5;
   float hier_thresh  = .5;
 
-  printf("PID:           %d\n", getpid());
-  printf("TDS instance:  %d\n", tds_id);
-  printf("Run directory: %s\n", dirname);
-  printf("Darknet home:  %s\n", conf_params.darknet_home);
-  printf("Data config:   %s\n", datacfg);
-  printf("Model config:  %s\n", cfgfile);
-  printf("Weights:       %s\n", weightfile);
+  printf("PID:            %d\n", getpid());
+  printf("TDS instance:   %d\n", tds_id);
+  printf("Run directory:  %s\n", dirname);
+  printf("Darknet home:   %s\n", conf_params.darknet_home);
+  printf("Data config:    %s\n", datacfg);
+  printf("Model config:   %s\n", cfgfile);
+  printf("Weights:        %s\n", weightfile);
+  printf("FFmpeg command: %s\n", FFMPEG_CMD);
   printf("\n");
+  fflush(stdout);
 
   list *options = read_data_cfg(datacfg);
   metadata meta = get_metadata(datacfg);
