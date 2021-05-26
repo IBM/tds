@@ -30,7 +30,8 @@
 
 #define FFPROBE_CMD "ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 %s"
 //#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -rtsp_transport tcp -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
-#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
+//#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
+#define FFMPEG_CMD "ffmpeg -hide_banner -loglevel error -r 60 -i %s -r 0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
 #define CAMS 6
 #define CATEGS 80
 
