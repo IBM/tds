@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
-#include "darknet.h"
+#include "utils/darknet/stable/darknet.h"
 #include "utils/microjson-1.6/mjson.h"
 
 #define FFPROBE_CMD "ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 %s"
