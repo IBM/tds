@@ -1,5 +1,5 @@
 {
-	"darknet_home"       :  "/home/gracen/dev/tds/integrated/utils/darknet",
+	"darknet_home"       :  "/home/gracen/dev/tds/utils/darknet",
 	"darknet_datacfg"    :  "cfg/coco.data",
 	"darknet_cfgfile"    :  "cfg/yolov3-tiny.cfg",
 	"darknet_weightfile" :  "yolov3-tiny.weights",

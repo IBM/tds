@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pedantic -Wall -O3
+CFLAGS = -pedantic -O3 -Wno-unused-result
 LDFLAGS = -lm
 DEPS =
 OBJ = tds-main.o
@@ -18,7 +18,7 @@ $(DNETDIR):
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 tds: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJSONDIR)/mjson.o $(DNETDIR)/*.o
+	$(CC) -o $@ $^ $(CFLAGS) $(MJSONDIR)/mjson.o $(DNETDIR)/*.o $(LDFLAGS)
 
 .PHONY: all clean $(MJSONDIR) $(DNETDIR)
 
