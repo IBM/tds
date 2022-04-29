@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -I. -I/home/augustojv/devel-workspace/darknet/include -I/usr/include/python3.8 -pedantic -Wall -O3
-LDFLAGS = -L/home/augustojv/devel-workspace/darknet/ -lpython3.8
+LDFLAGS = -lpython3.8
 DEPS =
 OBJ = tds-main.o cv_toolset.o
 MJSONDIR = utils/microjson-1.6

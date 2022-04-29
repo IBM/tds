@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>

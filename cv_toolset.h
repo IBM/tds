@@ -18,9 +18,6 @@
 #ifndef _CV_TOOLSET_H
 #define _CV_TOOLSET_H
 
-#include "darknet.h"
-//#include <opencv2/opencv.hpp>
-
 typedef struct {
   int width;
   int height;
