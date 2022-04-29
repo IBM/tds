@@ -29,7 +29,8 @@ num_channels = 3
 
 # TODO: Fix the way we set run_dir (it should be passed during initialization)
 #run_dir = '/home/espuser/mini-era/cv/yolo/'
-run_dir = '/dccstor/epochs/ajvega/era/src/cv/yolo/'
+#run_dir = '/dccstor/epochs/ajvega/era/src/cv/yolo/'
+run_dir = '/home/augustojv/devel-workspace/tds/yolo/'
 
 model = None
 classes = ['BMP2', 'D20', 'MTLB', 'T72', 'ZSU23', '2S3',
@@ -99,8 +100,10 @@ def postprocessing(predictions, model, classes):
 
 def yolo_model():
     # eventually replace with function to pull model from nvdla
-    model = LITinyYolo.load_from_checkpoint(
-        run_dir + 'weights.ckpt', classes=classes)
+    #model = LITinyYolo.load_from_checkpoint(
+    #    run_dir + 'weights.ckpt', classes=classes)
+    model = LITinyYolo.load_weights(
+        run_dir + 'yolov2-tiny.weights')
     return model
 
 
@@ -184,9 +187,90 @@ def predict(imagetype): # --> called by kernels_api.c
     elif label in (0, 1, 2, 3, 4):
         corrected_label = label
     else: #> 4 Say nothing
-        correcteed_label = 0
+        corrected_label = 0
     return corrected_label
 
+
+def predict2(imagetype): # --> called by kernels_api.c
+    # eventually replace the image selection code below with code to pull image from 
+    # nvdla instead
+
+    # not utilizing object from trace here since its hpvm is not passing args correctly
+    #imagetype = randint(0, 11)
+
+    # # fit MIO labels to YOLO model labels
+    # if imagetype in [-1, 0]:         # nothing = nothing
+    #     imagetype = -1
+    # elif imagetype == 1:             # bus = large military vehicle
+    #     imagetype = choice([0, 2, 4, 5])
+    # elif imagetype == 2:             # car = normal vehicle
+    #     imagetype = choice([6, 8, 9])
+    # elif imagetype == 3:             # pedestrian = man
+    #     imagetype = 7
+    # elif imagetype == 4:             # truck = small military vehicle
+    #     imagetype = 4
+    # else:
+    #     raise ValueError('uh oh!')
+
+    # if imagetype != -1: # aka not myself or nothing
+    # select text file of image locations for class specified by imagetype
+    #class_file = run_dir + 'class_files/' + str(imagetype) + '.txt'
+
+    # randomly select an image from desired class (aka first label in label file)
+    # note to self -> the logic by which images were split up into classes is
+    # found in split_by_class.py, not here
+    #with open(class_file, 'r') as file:
+    #    lines = file.readlines()
+    #    mini = 0
+    #    maxi = len(lines) - 1
+    #    rand = randint(mini, maxi)
+    #    path = lines[rand][:-1]
+    #    path = '/dccstor/epochs/datasets/ATR-YOLO/yolo-data/' + path.replace('/home/espuser/mini-era/yolo-data/','')
+    #test_image = Image.open(path).convert('RGB')
+    test_image = Image.open('/home/augustojv/devel-workspace/darknet/data/dog.jpg').convert('RGB')
+    #image_num  = cv2.imread(path)
+    #image_num  = cv2.cvtColor(image_num, cv2.COLOR_BGR2RGB)
+
+    # transform image to proper pytorch tensor format
+    transform = transforms.Compose([transforms.ToTensor()])
+    img_tensor = transform(test_image).to('cpu').unsqueeze(0)
+
+    # predict and extract label from network output
+    outputs = model(img_tensor)
+    #print(outputs)
+    #print(path, imagetype)
+    sys.stdout.flush()
+    dets = postprocessing(outputs, model, classes) # eventually replace with other postprocessing
+    #columns of dets: 'image', 'class_label', 'id', 'x_top_left', 'y_top_left', 'width','value_type'
+    x_min = dets['x_top_left']
+    y_min = dets['y_top_left']
+    width = dets['width']
+    height = dets['height']
+
+    try:
+        # attempt to match string label with integer label
+        label_str = dets['class_label'][0]
+        label = classes.index(label_str)
+        #print("label", label, label_str)
+        #bbox = [x_min, y_min, width, height]
+        #visualize(image_num, bbox, label_str)
+    except:
+        # uh oh! no detections found
+        label = -1
+    # else: 
+    #     label = -1
+    
+    # fit YOLO labels to MIO model labels, assigned in order to make likelihood of different
+    # objects equal for testing purposes
+    print('label_str = ', label_str)
+    print('label = ', label)
+    if label == -1: # myself or nothing
+        corrected_label = 0
+    elif label in (0, 1, 2, 3, 4):
+        corrected_label = label
+    else: #> 4 Say nothing
+        corrected_label = 0
+    return corrected_label
 
 # only needed for individual testing purposes
 # def main(argv):

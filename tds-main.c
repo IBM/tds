@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 IBM
+ * Copyright 2022 IBM
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
-#include "darknet.h"
 #include "utils/microjson-1.6/mjson.h"
+#include "cv_toolset.h"
 
 #define FFPROBE_CMD "ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 %s"
 //#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -rtsp_transport tcp -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
@@ -37,16 +37,10 @@
 
 const char *build_str = "This build was compiled at " __DATE__ ", " __TIME__ ".";
 
-static int coco_ids[] = {1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,27,28,31,32,33,34,35,36,37,38,39,40,41,42,43,44,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,67,70,72,73,74,75,76,77,78,79,80,81,82,84,85,86,87,88,89,90};
-
 bool exit_loop      = false;
 unsigned int tds_id = 0;
 
 typedef struct {
-  char darknet_home[512];
-  char darknet_datacfg[512];
-  char darknet_cfgfile[512];
-  char darknet_weightfile[512];
   char input_image[512];
   char input_stream_1[512];
   char input_stream_2[512];
@@ -57,12 +51,6 @@ typedef struct {
   bool use_input_image;
   bool use_input_stream;
 } conf_params_t;
-
-typedef struct {
-  int width;
-  int height;
-  int c;
-} dim_t;
 
 // The application supports up to 6 input streams
 typedef struct {
@@ -94,10 +82,6 @@ int parse_config_file(char *filename, conf_params_t *conf_params)
 
   /* Mapping of JSON attributes to C my_object's struct members */
   const struct json_attr_t json_attrs[] = {
-       {"darknet_home", t_string, .addr.string = conf_params->darknet_home, .len = sizeof(conf_params->darknet_home)},
-       {"darknet_datacfg", t_string, .addr.string = conf_params->darknet_datacfg, .len = sizeof(conf_params->darknet_datacfg)},
-       {"darknet_cfgfile", t_string, .addr.string = conf_params->darknet_cfgfile, .len = sizeof(conf_params->darknet_cfgfile)},
-       {"darknet_weightfile", t_string, .addr.string = conf_params->darknet_weightfile, .len = sizeof(conf_params->darknet_weightfile)},
        {"input_stream_1", t_string, .addr.string = conf_params->input_stream_1, .len = sizeof(conf_params->input_stream_1)},
        {"input_stream_2", t_string, .addr.string = conf_params->input_stream_2, .len = sizeof(conf_params->input_stream_2)},
        {"input_stream_3", t_string, .addr.string = conf_params->input_stream_3, .len = sizeof(conf_params->input_stream_3)},
@@ -324,7 +308,7 @@ void to_json_string(short sequence[CAMS][CATEGS], char *sequence_str)
     for (categ=0; categ<CATEGS; categ++)
       if (sequence[cam][categ] != -1) {
         //strcat(sequence_str, "\"");
-        sprintf(tmp, "%d", coco_ids[categ]);
+        sprintf(tmp, "%d", sequence[cam][categ]);
         strcat(sequence_str, tmp);
         strcat(sequence_str, ",");
         //strcat(sequence_str, "\",");
@@ -335,6 +319,16 @@ void to_json_string(short sequence[CAMS][CATEGS], char *sequence_str)
   }
   sequence_str[strlen(sequence_str)-1] = '\0';  // Remove last comma
   strcat(sequence_str, "}");
+}
+
+
+double what_time_is_it_now()
+{
+    struct timeval time;
+    if (gettimeofday(&time,NULL)){
+        return 0;
+    }
+    return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
 
@@ -428,46 +422,22 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-
-  /*************************************************************************************/
-  /* Initialize Darknet model                                                          */
-  /*************************************************************************************/
-  char datacfg[1024];
-  char cfgfile[1024];
-  char weightfile[1024];
-  snprintf(datacfg,    1024, "%s/%s", conf_params.darknet_home, conf_params.darknet_datacfg);
-  snprintf(cfgfile,    1024, "%s/%s", conf_params.darknet_home, conf_params.darknet_cfgfile);
-  snprintf(weightfile, 1024, "%s/%s", conf_params.darknet_home, conf_params.darknet_weightfile);
-  float thresh       = .5;
-  float hier_thresh  = .5;
-
   printf("PID:            %d\n", getpid());
   printf("TDS instance:   %d\n", tds_id);
   printf("Run directory:  %s\n", dirname);
-  printf("Darknet home:   %s\n", conf_params.darknet_home);
-  printf("Data config:    %s\n", datacfg);
-  printf("Model config:   %s\n", cfgfile);
-  printf("Weights:        %s\n", weightfile);
   printf("FFmpeg command: %s\n", FFMPEG_CMD);
   printf("\n");
   fflush(stdout);
 
-  list *options = read_data_cfg(datacfg);
-  metadata meta = get_metadata(datacfg);
-  char *name_list = option_find_str(options, "names", "names.list");
-  char **names = get_labels(name_list);
 
-  image **alphabet = load_alphabet();
-  network *net = load_network(cfgfile, weightfile, 0);
-  set_batch_network(net, 1);
-  srand(2222222);
+  // This is the initialization of the PyTorch Tiny-YOLOv2 model
+  if (cv_toolset_init() != 0) {
+      printf("Computer Vision toolset initialization failed...\n");
+      exit(1);
+  }
+
   double curr_time;
-  float nms=.45;
 
-#ifdef NNPACK
-  nnp_initialize();
-  net->threadpool = pthreadpool_create(4);
-#endif
 
 
   /*************************************************************************************/
@@ -490,9 +460,8 @@ int main(int argc, char *argv[])
 
   FILE *pipein;
   int cam_id;
-  char outfile[300];
+  char filename[300];
   time_t timestamp;
-  bool object_detected;
   int read_attempt = 0;
   short sequence[CAMS][CATEGS];
   char sequence_str[3000];
@@ -554,85 +523,49 @@ int main(int argc, char *argv[])
     }
     read_attempt = 0;
 
-    // Convert raw image into YOLO/Darknet image format
-    curr_time = what_time_is_it_now();
-    int i,j,k;
-    image im = make_image(dimensions.width, dimensions.height, dimensions.c);
-    for (k = 0; k < dimensions.c; ++k) {
-        for (j = 0; j < dimensions.height; ++j) {
-  	  for (i = 0; i < dimensions.width; ++i) {
-  	      int dst_index = i + dimensions.width*j + dimensions.width*dimensions.height*k;
-  	      int src_index = k + dimensions.c*i + dimensions.c*dimensions.width*j;
-  	      im.data[dst_index] = (float)data[src_index]/255.;
-  	  }
-        }
-    }
-    image sized     = letterbox_image(im, net->w, net->h);
-    float *X        = sized.data;
-    conversion_time = (what_time_is_it_now()-curr_time);
-    //printf("Image converted in %f seconds.\n", what_time_is_it_now()-curr_time);
-
 
     /*************************************************************************************/
     /* Detect objects                                                                    */
     /*************************************************************************************/
-    curr_time = what_time_is_it_now();
-    network_predict(net, X);
-    //printf("Predicted in %f seconds.\n", what_time_is_it_now()-curr_time);
-    prediction_time = (what_time_is_it_now()-curr_time);
+
     int nboxes = 0;
-    curr_time = what_time_is_it_now();
-    detection *dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes);
-    if (nms) do_nms_sort(dets, nboxes, meta.classes, nms);
-    draw_detections(im, dets, nboxes, thresh, names, alphabet, meta.classes);
-    boxing_time = (what_time_is_it_now()-curr_time);
-    //printf("Boxes generated in %f seconds.\n", what_time_is_it_now()-curr_time);
+    snprintf(filename, 270, "cam_%d_frame_%05ld.jpg", cam_id, count);
+    detection_t *dets = run_object_classification(data, dimensions, filename, &nboxes);
+
+    if (dets == NULL)
+      printf("run_object_classification failed (skipping this frame)\n");
 
 
     /*************************************************************************************/
     /* Write log and images                                                              */
     /*************************************************************************************/
+
     time(&timestamp);
-    object_detected = false;
-    for(i = 0; i < nboxes; ++i){
-      for(j = 0; j < meta.classes; ++j) {
-	if (dets[i].prob[j]) {
-          // Logging to text file
-	  fprintf(fp_pred, "%d,%ld,%d,%s,%.4f,%.4f,%.4f,%.4f,%.4f\n",
-                                          cam_id,
-                                          timestamp,
-                                          coco_ids[j],
-					  names[j],
-					  dets[i].prob[j],
-					  read_time,
-					  conversion_time,
-					  prediction_time,
-					  boxing_time
-					  );
-	  sequence[cam_id-1][j] = 1;
-	  object_detected = true;
-	}
-      }
+    int j = 0;
+    for (int i = 0; i < nboxes; ++i) {
+	fprintf(fp_pred, "%d,%ld,%ld,%s,%.4f,%.4f,%.4f,%.4f,%.4f\n",
+		  cam_id,
+		  timestamp,
+		  dets[i].id,
+		  dets[i].class_label,
+		  dets[i].confidence,
+		  read_time,
+		  conversion_time,
+		  prediction_time,
+		  boxing_time
+		);
+	sequence[cam_id-1][j++] = dets[i].id;
     }
     
-    if (object_detected) {
-      // We just log images where objects were detected
-      snprintf(outfile, 270, "cam_%d_frame_%05ld", cam_id, count);
-      save_image(im, outfile);
-    }
-
 
     /*************************************************************************************/
     /* Free and release stuff                                                            */
     /*************************************************************************************/
-    free_detections(dets, nboxes);
-    free_image(im);
-    free_image(sized);
-
-
     fflush(stdout);
     fflush(stderr);
     fflush(fp_pred);
+    if (dets != NULL)
+      free(dets);
 
     count++;
     sleep(5);
@@ -643,21 +576,14 @@ int main(int argc, char *argv[])
   // Flush and close input and output pipes
   close_input_pipes(input);
   free(data);
-  free_network(net);
   fclose(fp_pred);
 
   if (fp_log != NULL) {
     to_json_string(sequence, sequence_str);
     fprintf(fp_log, "%s\n", sequence_str);
+    fflush(fp_log);
+    fclose(fp_log);
   }
-  fflush(fp_log);
-  fclose(fp_log);
-
-
-#ifdef NNPACK
-  pthreadpool_destroy(net->threadpool);
-  nnp_deinitialize();
-#endif
 
   printf("Exiting...\n");
   return 0;

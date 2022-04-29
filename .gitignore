@@ -12,3 +12,6 @@ my_conf_*
 run_*
 launcher.out
 predictions.out
+*.weights
+__pycache__
+class_files
