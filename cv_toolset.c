@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Python.h>
-#include "darknet.h"
 #include "cv_toolset.h"
 
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
