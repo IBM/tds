@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I. -I/usr/include/python3.8 -pedantic -Wall -O3
+CFLAGS = -I. -I/usr/include/python3.8 -pedantic -Wall -O3 -DREMOTE_CLASSIFIER
 LDFLAGS = -lpython3.8
 DEPS =
 OBJ = tds-main.o cv_toolset.o

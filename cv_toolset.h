@@ -37,5 +37,6 @@ typedef struct {
 
 int cv_toolset_init();
 detection_t *run_object_classification(unsigned char *data, dim_t dimensions, char *filename, int *nboxes);
+detection_t *run_object_classification_remote(unsigned char *data, dim_t dimensions, char *filename, int *nboxes, int sock);
 
 #endif

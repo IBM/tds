@@ -16,6 +16,8 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stddef.h>
 #include <unistd.h>
 #include <signal.h>
@@ -28,6 +30,10 @@
 #include <errno.h>
 #include "utils/microjson-1.6/mjson.h"
 #include "cv_toolset.h"
+
+#include <sys/socket.h>	//socket
+#include <arpa/inet.h>	//inet_addr
+#include <unistd.h>
 
 #define FFPROBE_CMD "ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1:nokey=1 %s"
 //#define FFMPEG_CMD  "ffmpeg -hide_banner -loglevel error -rtsp_transport tcp -i %s -filter:v fps=0.25 -f image2pipe -vcodec rawvideo -pix_fmt rgb24 -"
@@ -281,14 +287,18 @@ void print_usage(char * pname)
 {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
-  printf("    -h          : print this helpful usage info\n");
-  printf("    -c <file>   : JSON configuration file to use\n");
-  printf("    -d <dir>    : directory for this run (i.e. where all logs and output will be placed)\n");
-  printf("                :      Optional (default: current directory)\n");
-  printf("    -l <file>   : global log file where we append the classification results during the run\n");
-  printf("                :      Optional (default: no global logging)\n");
-  printf("    -i <id>     : integer id to assign to this run\n");
-  printf("                :      Optional (default: 0)\n");
+  printf("    -h           : print this helpful usage info\n");
+  printf("    -c <file>    : JSON configuration file to use\n");
+  printf("    -d <dir>     : directory for this run (i.e. where all logs and output will be placed)\n");
+  printf("                 :      Optional (default: current directory)\n");
+  printf("    -l <file>    : global log file where we append the classification results during the run\n");
+  printf("                 :      Optional (default: no global logging)\n");
+  printf("    -i <id>      : integer id to assign to this run\n");
+  printf("                 :      Optional (default: 0)\n");
+#ifdef REMOTE_CLASSIFIER
+  printf("    -s <ip_addr> : object recognition server's TCP IP address\n");
+  printf("    -p <port>    : object recognition server's TCP port\n");
+#endif
 }
 
 
@@ -335,13 +345,20 @@ double what_time_is_it_now()
 
 int main(int argc, char *argv[])
 {
+  int sock = -1;
+  struct sockaddr_in server;
+  bool using_server = false;
+  //char message[1000] , server_reply[2000];
 
   char confile[256];
   char dirname[256];
   char logfile[256];
+  char ip_addr[16] = "000.000.000.000";
+  unsigned int port = 0;
   confile[0] = '\0';
   logfile[0] = '\0';
   strcpy(dirname, ".");
+  double curr_time;
   int option;
 
   printf("------------------------------------------------------------------------------------\n");
@@ -350,7 +367,7 @@ int main(int argc, char *argv[])
   printf("------------------------------------------------------------------------------------\n\n");
   fflush(stdout);
 
-  while ((option = getopt(argc, argv, ":hc:d:l:i:")) != -1) {
+  while ((option = getopt(argc, argv, ":hc:d:l:i:s:p:")) != -1) {
     switch(option) {
       case 'h':
         print_usage(argv[0]);
@@ -367,6 +384,12 @@ int main(int argc, char *argv[])
       case 'i':
 	tds_id = atoi(optarg);
 	break;
+      case 's':
+	snprintf(ip_addr, 15, "%s", optarg);
+	break;
+      case 'p':
+	port = atoi(optarg);
+	break;
       case ':':
 	printf("Option %c needs a value\n", optopt);
 	exit(-1);
@@ -381,6 +404,36 @@ int main(int argc, char *argv[])
     print_usage(argv[0]);
     exit(-1);
   }
+
+#ifdef REMOTE_CLASSIFIER
+  /******************************************************************************/
+  /* We try to connect to a separate object recognition server (tiny_yolov2.py) */
+  /* running standalone and waiting for input frames to process.                */
+  /******************************************************************************/
+  if ((strcmp(ip_addr, "000.000.000.000") == 0) || (port == 0)) {
+      printf("ERROR: the object recognition server's TCP IP address and port were not specified\n");
+      print_usage(argv[0]);
+      exit(-1);
+  }
+
+  printf("The user has indicated to connect to object recognition server %s:%d... ", ip_addr, port);
+  sock = socket(AF_INET , SOCK_STREAM , 0);
+  if (sock == -1) {
+      printf("could not create socket (error)\n");
+      exit(-1);
+  }
+  server.sin_addr.s_addr = inet_addr(ip_addr);
+  server.sin_family      = AF_INET;
+  server.sin_port        = htons(port);
+
+  // Connect to object recognition server
+  if (connect(sock, (struct sockaddr *)&server, sizeof(server)) != 0) {
+      printf("connect failed (error)\n");
+      exit(-1);
+  }
+  using_server = true;
+  printf("connected!\n");
+#endif
 
   FILE *fp_log = NULL;
   if (logfile[0] != '\0')
@@ -431,14 +484,13 @@ int main(int argc, char *argv[])
   fflush(stdout);
 
 
-  // This is the initialization of the PyTorch Tiny-YOLOv2 model
-  if (cv_toolset_init() != 0) {
+  /*************************************************************************************/
+  /* Initialize the PyTorch Tiny-YOLOv2 model (only if we're not using it remotely     */
+  /*************************************************************************************/
+  if (!using_server && cv_toolset_init() != 0) {
       printf("Computer Vision toolset initialization failed...\n");
       exit(1);
   }
-
-  double curr_time;
-
 
 
   /*************************************************************************************/
@@ -531,7 +583,12 @@ int main(int argc, char *argv[])
 
     int nboxes = 0;
     snprintf(filename, 270, "cam_%d_frame_%05ld.jpg", cam_id, count);
+
+#ifdef REMOTE_CLASSIFIER
+    detection_t *dets = run_object_classification_remote(data, dimensions, filename, &nboxes, sock);
+#else
     detection_t *dets = run_object_classification(data, dimensions, filename, &nboxes);
+#endif
 
     if (dets == NULL)
       printf("run_object_classification failed (skipping this frame)\n");
@@ -578,6 +635,9 @@ int main(int argc, char *argv[])
   close_input_pipes(input);
   free(data);
   fclose(fp_pred);
+#ifdef REMOTE_CLASSIFIER
+  close(sock);
+#endif
 
   if (fp_log != NULL) {
     to_json_string(sequence, sequence_str);

@@ -7,6 +7,7 @@ data
 test_microjson
 release*
 predictions.log
+log.json
 example?
 my_conf_*
 run_*

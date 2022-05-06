@@ -1,4 +1,6 @@
-import sys
+import sys, getopt
+import socket
+import struct
 import cv2
 import torch
 import torch.nn as nn
@@ -11,6 +13,7 @@ from IPython.display import display
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 BOX_COLOR = (255, 0, 0) # Red
@@ -159,3 +162,95 @@ class TinyYOLOv2NonLeaky(lnn.module.Darknet):
         # We return the pandas DataFrame (output_df) converted to a list of
         # dcitionaries to facilitate its consumption on the C domain.
         return output_df.to_dict(orient='records')
+
+
+def main(argv):
+    
+    port  = ''
+    
+    if len (argv) > 3:
+        print('Usage: ' + argv[0] + ' -p <socket_port>')
+        sys.exit(1)
+        
+    try:
+        opts, args = getopt.getopt(argv[1:], "hp:", ["help","port="])
+    except getopt.GetoptError:
+        print('Usage: ' + argv[0] + ' -p <socket_port>')
+        sys.exit(1)
+    
+    for opt, arg in opts:
+        if opt == '-h':
+            print('Usage: ' + argv[0] + ' -p <socket_port>')
+            sys.exit(0)
+        elif opt in ("-p", "--port"):
+            port = arg
+    
+    if (not port):
+        print('Usage: ' + argv[0] + ' -p <socket_port>')
+        sys.exit(1)
+            
+    model = TinyYOLOv2NonLeaky()
+    model.load('yolov2-tiny.weights')
+    
+    HOST_IP = socket.gethostbyname(socket.gethostname())
+    PORT    = int(port) #65432  # Port to listen on (non-privileged ports are > 1023)
+
+    print('Listening for inbound connections on ' + str(HOST_IP) + ':' + str(PORT))
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        
+        s.bind((HOST_IP, PORT))
+        s.listen()
+        conn, addr = s.accept()
+        
+        with conn:
+            
+            print(f"Connected by {addr}")
+            
+            while True:
+
+                #try:
+                # Get JPEG image filename
+                filename = conn.recv(1024)
+                if not filename:
+                    break
+                filename = filename.decode("utf-8")
+                #print('Received: ', filename)
+                conn.send('1'.encode())
+
+                # Get and parse dimensions
+                dims = conn.recv(1024)
+                if not dims:
+                    break
+                dims = dims.decode("utf-8")
+                dims = [int(x) for x in dims.split(',')]
+                #print('Received: ', dims)
+                conn.send('2'.encode())
+
+                # Get image
+                length = dims[0] * dims[1] * dims[2]
+                image = b''
+                while len(image) < length:
+                    to_read = length - len(image)
+                    image += conn.recv(4096 if to_read > 4096 else to_read)
+                image = np.frombuffer(image, dtype=np.uint8)
+                image = image.reshape(dims)
+                output_df = model.predict(image, filename)
+                output_df_csv = pd.DataFrame.from_records(output_df).to_csv() 
+
+                # Send the number of bounding boxes (rows in the output_df DataFrame)
+                conn.send(str(len(output_df)).ljust(10).encode())
+
+                # Send the size (in bytes) of the output_df DataFrame
+                conn.send(str(len(output_df_csv)).ljust(10).encode())
+                
+                # Send the actual DataFrame in CSV format
+                conn.sendall(output_df_csv.encode())    
+
+                #finally:
+                #    conn.shutdown(socket.SHUT_WR)
+                #    conn.close()
+
+
+if __name__ == "__main__":
+   main(sys.argv)
