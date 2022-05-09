@@ -92,7 +92,7 @@ cd <your_tds_home>/
 
 The `-s` and `-p` options indicate the IP address and port of the object recognition model server, respectively. In this example, both the frontend and backend run on the same computer, and then we can use the `127.0.0.1` loopback address.
 
-![Alt text](diagram.png?raw=true "TDS Frontend and Backend")
+<img src="https://raw.githubusercontent.com/IBM/tds/pytds/diagram.png" width="100" height="100">
 
 
 ## Contributors and Current Maintainers
