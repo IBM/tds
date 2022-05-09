@@ -16,3 +16,4 @@ predictions.out
 *.weights
 __pycache__
 class_files
+!diagram.png
