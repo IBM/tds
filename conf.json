@@ -1,0 +1,11 @@
+{
+	"input_image"        :  "",
+	"input_stream_1"     :  "",
+	"input_stream_2"     :  "",
+	"input_stream_3"     :  "",
+	"input_stream_4"     :  "",
+	"input_stream_5"     :  "",
+	"input_stream_6"     :  "",
+	
+	"model_weights"      :  "yolo/yolov2-tiny.weights"
+}
