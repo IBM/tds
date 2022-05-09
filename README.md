@@ -5,7 +5,7 @@ This application implements a simple object/threat detection system using [TinyY
 ## Requirements
 
 TDS has been successfully built and executed using the following set-up:
- - Ubuntu 18.04 and 20.04
+ - Ubuntu 18.04 and 20.04 (using Python 3)
 
 TDS requires:
  - [lightnet](https://eavise.gitlab.io/lightnet/notes/01-installation.html)
@@ -24,19 +24,17 @@ The installation and execution are fairly standard:
 ```
 git clone git@github.com:IBM/tds.git
 cd tds
-make -f Makefile.local clean
-make -f Makefile.local
+make clean
+make
 ```
 
-To run TDS, we first set up `PYTHONPATH` appropriately: `export PYTHONPATH=<your_tds_home>/yolo`. We also need to indicate the input image(s) to classify; for example setting the `input_image` field with the path and file name of an image (e.g. [dog.jpg](https://github.com/pjreddie/darknet/blob/master/data/dog.jpg)):
+Set up the `PYTHONPATH` environment variable to point to the TinyYoloV2/Lightnet Python files:
 
 ```
-"input_image"        :  "./dog.jpg",
+export PYTHONPATH=<your_tds_home>/yolo`. 
 ```
 
-In this case, TDS will start, load the weights into the TinyYoloV2/Lightnet model, classify that single image, and exit. Alternativelly, we can classify camera frames by indicating the RTSP URL of up to six IP cameras (using the fields `input_stream_*`).
-
-We also need to download the [yolov2-tiny.weights](https://pjreddie.com/media/files/yolov2-tiny.weights) weights file into `<your_tds_home>/yolo`.
+Download the [yolov2-tiny.weights](https://pjreddie.com/media/files/yolov2-tiny.weights) weights file into `<your_tds_home>/yolo`.
 
 ### Usage
 
@@ -44,21 +42,57 @@ We also need to download the [yolov2-tiny.weights](https://pjreddie.com/media/fi
 ./tds -h
 Usage: ./tds <OPTIONS>
  OPTIONS:
-    -h          : print this helpful usage info
-    -c <file>   : JSON configuration file to use
-    -d <dir>    : directory for this run (i.e. where all logs and output will be placed)
-                :      Optional (default: current directory)
-    -l <file>   : global log file where we append the classification results during the run
-                :      Optional (default: no global logging)
-    -i <id>     : integer id to assign to this run
-                :      Optional (default: 0)
+    -h           : print this helpful usage info
+    -c <file>    : JSON configuration file to use
+    -d <dir>     : directory for this run (i.e. where all logs and output will be placed)
+                 :      Optional (default: current directory)
+    -l <file>    : global log file where we append the classification results during the run
+                 :      Optional (default: no global logging)
+    -i <id>      : integer id to assign to this run
+                 :      Optional (default: 0)
+    -s <ip_addr> : object recognition server's TCP IP address
+    -p <port>    : object recognition server's TCP port
 ```
 
-`-c` is the only mandatory argument, which specifies the JSON configuration file to use. So in its simplest form, TDS can be executed with the following command:
+`-c` specifies the JSON configuration file to use. So in its simplest form, TDS can be executed with the following command:
 
 ```
 ./tds -c ./conf.json
 ```
+
+We also need to indicate the input image(s) to classify; for example, by setting the `input_image` field in the JSON configuration file with the path and file name of an image (e.g. [dog.jpg](https://github.com/pjreddie/darknet/blob/master/data/dog.jpg)):
+
+```
+"input_image" : "./dog.jpg",
+```
+
+In this case, TDS will start, load the weights into the TinyYoloV2/Lightnet model, classify that single image, and exit. Alternativelly, we can classify camera frames by indicating the RTSP URL of up to six IP cameras (using the fields `input_stream_*` in the JSON configuration file).
+
+The example above runs TDS as a single (monolitic) application; i.e. a single process running on a single computer. In some cases, we may want to separate the TDS _frontend_ (interface with the cameras) frpm the TDS _backend_ (object detection model). This is particularly useful when the object detection model is offloaded to a separate unit (e.g. external FPGA accelerator) from the CPU where TDS is launched. To enable this mode, TDS has to be built using the `REMOTE_CLASSIFIER` preprocessor macro:
+
+```
+make CFLAGS=-DREMOTE_CLASSIFIER
+```
+
+We then start the TDS backend server (object detection model):
+
+```
+cd <your_tds_home>/yolo/
+python ./tiny_yolov2.py -p 65432
+```
+
+The `-p` option indicates the port where the object recognition model socket 'listens' (`65432` is just an example; other port numbers also work).
+
+In a different terminal, we start the TDS frontend (interface with the cameras and logging):
+
+```
+cd <your_tds_home>/
+./tds -c ./my_conf_local.json -l log.json -s 127.0.0.1 -p 65432
+```
+
+The `-s` and `-p` options indicate the IP address and port of the object recognition model server, respectively. In this example, both the frontend and backend run on the same computer, and then we can use the `127.0.0.1` loopback address.
+
+![Alt text](diagram.png?raw=true "TDS Frontend and Backend")
 
 
 ## Contributors and Current Maintainers

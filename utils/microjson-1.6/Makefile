@@ -3,12 +3,12 @@
 # The version for release is derived from the mostt recent stanza in the news file.
 VERSION=$(shell sed -n <NEWS.adoc '/::/s/^\([0-9][^:]*\).*/\1/p' | head -1)
 
-CFLAGS = -O
+override CFLAGS = -O
 
 # Add DEBUG_ENABLE for the tracing code
-CFLAGS += -DDEBUG_ENABLE -g
+override CFLAGS += -DDEBUG_ENABLE -g
 # Add TIME_ENABLE to support RFC3339 time literals
-CFLAGS += -DTIME_ENABLE
+override CFLAGS += -DTIME_ENABLE
 
 all: mjson.o test_microjson example1 example2 example3 example4
 
