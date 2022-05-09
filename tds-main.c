@@ -55,6 +55,7 @@ typedef struct {
   char input_stream_4[512];
   char input_stream_5[512];
   char input_stream_6[512];
+  char model_weights[512];
   bool use_input_image;
   bool use_input_stream;
 } conf_params_t;
@@ -96,6 +97,7 @@ int parse_config_file(char *filename, conf_params_t *conf_params)
        {"input_stream_5", t_string, .addr.string = conf_params->input_stream_5, .len = sizeof(conf_params->input_stream_5)},
        {"input_stream_6", t_string, .addr.string = conf_params->input_stream_6, .len = sizeof(conf_params->input_stream_6)},
        {"input_image", t_string, .addr.string = conf_params->input_image, .len = sizeof(conf_params->input_image)},
+       {"model_weights", t_string, .addr.string = conf_params->model_weights, .len = sizeof(conf_params->model_weights)},
        {NULL},
      };
 
@@ -487,7 +489,7 @@ int main(int argc, char *argv[])
   /*************************************************************************************/
   /* Initialize the PyTorch Tiny-YOLOv2 model (only if we're not using it remotely     */
   /*************************************************************************************/
-  if (!using_server && cv_toolset_init() != 0) {
+  if (!using_server && cv_toolset_init(conf_params.model_weights) != 0) {
       printf("Computer Vision toolset initialization failed...\n");
       exit(1);
   }

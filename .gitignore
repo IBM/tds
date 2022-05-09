@@ -9,7 +9,7 @@ release*
 predictions.log
 log.json
 example?
-my_conf_*
+my_conf*
 run_*
 launcher.out
 predictions.out

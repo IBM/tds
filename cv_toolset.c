@@ -59,7 +59,7 @@ int recv_all(int sock, char *buf, int len)
 }
 
 
-int cv_toolset_init() {
+int cv_toolset_init(char *model_weights) {
 
   PyObject *module_name, *module, *dict, *python_class;
 
@@ -118,7 +118,8 @@ int cv_toolset_init() {
 
   // Call a method of the class instance; in this case, the load() method to load the model weights
   // Returns new reference
-  PyObject *value = PyObject_CallMethod(python_yolo_model, "load", "(s)", "yolo/yolov2-tiny.weights");
+  //PyObject *value = PyObject_CallMethod(python_yolo_model, "load", "(s)", "yolo/yolov2-tiny.weights");
+  PyObject *value = PyObject_CallMethod(python_yolo_model, "load", "(s)", model_weights);
   if (value == NULL) {
       PyErr_Print();
       printf("Fails to call load() method.\n");
