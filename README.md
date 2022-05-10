@@ -78,7 +78,7 @@ We then start the TDS backend server (object detection model):
 
 ```
 cd <your_tds_home>/yolo/
-python ./tiny_yolov2.py -p 65432
+python ./tiny_yolov2_coco.py -p 65432
 ```
 
 The `-p` option indicates the port where the object recognition model socket 'listens' (`65432` is just an example; other port numbers also work).
@@ -93,6 +93,20 @@ cd <your_tds_home>/
 The `-s` and `-p` options indicate the IP address and port of the object recognition model server, respectively. In this example, both the frontend and backend run on the same computer, and then we can use the `127.0.0.1` loopback address.
 
 <img src="https://raw.githubusercontent.com/IBM/tds/pytds/diagram.png" width="600">
+
+Finally, we can also indicate what image dataset to target, from the two datasets supported: [COCO](https://cocodataset.org/) and [ATR](https://dsiac.org/databases/atr-algorithm-development-image-database/). To do this, set the `python_module` field in the JSON configuration file appropriately:
+
+```
+"python_module" : "tiny_yolov2_coco",
+```
+
+or
+
+```
+"python_module" : "tiny_yolov2_atr",
+```
+
+Similarly, set the `model_weights` field in the JSON configuration file with the corresponding weights file (not included).
 
 
 ## Contributors and Current Maintainers

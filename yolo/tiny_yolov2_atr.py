@@ -104,7 +104,7 @@ class TinyYOLOv2NonLeaky(lnn.module.Darknet):
         return ln.data.transform.Compose([
             # GetBoxes transformation generates bounding boxes from network output
             ln.data.transform.GetDarknetBoxes(
-                conf_thresh=0.05,  # It was 0.5
+                conf_thresh=0.2,  # It was 0.5
                 network_stride=self.stride,
                 anchors=self.anchors
             ),
@@ -203,7 +203,7 @@ def main(argv):
         sys.exit(1)
             
     model = TinyYOLOv2NonLeaky()
-    model.load('yolov2-tiny.weights')
+    model.load('weights.ckpt')
     
     HOST_IP = socket.gethostbyname(socket.gethostname())
     PORT    = int(port) #65432  # Port to listen on (non-privileged ports are > 1023)
