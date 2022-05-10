@@ -28,18 +28,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/ndarrayobject.h>
 
-PyObject *pName, *pModule, *pFunc, *pFunc_load;
-PyObject *pArgs, *pValue, *pretValue;
-
-char *python_module	= "tiny_yolov2";
-char *python_func	= "predict2";
-char *python_func_load	= "loadmodel";
-
 PyObject *python_yolo_model;
 
-// To call pickle (serialization) routines when
-// we want to send Python objects over sockets
-PyObject *module = NULL;
 
 
 int recv_all(int sock, char *buf, int len)
@@ -59,7 +49,7 @@ int recv_all(int sock, char *buf, int len)
 }
 
 
-int cv_toolset_init(char *model_weights) {
+int cv_toolset_init(char *python_module, char *model_weights) {
 
   PyObject *module_name, *module, *dict, *python_class;
 
@@ -71,7 +61,7 @@ int cv_toolset_init(char *model_weights) {
   import_array();
 
   // Returns new reference
-  module_name = PyUnicode_FromString("tiny_yolov2");
+  module_name = PyUnicode_FromString(python_module);
 
   // Returns new reference
   module = PyImport_Import(module_name);

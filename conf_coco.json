@@ -1,0 +1,12 @@
+{
+	"input_image"        :  "",
+	"input_stream_1"     :  "rtsp://augustojv:testrtsp@192.168.0.100/live",
+	"input_stream_2"     :  "",
+	"input_stream_3"     :  "",
+	"input_stream_4"     :  "",
+	"input_stream_5"     :  "",
+	"input_stream_6"     :  "",
+	
+	"python_module"      :  "tiny_yolov2_coco",
+	"model_weights"      :  "yolo/yolov2-tiny.weights"
+}

@@ -55,6 +55,7 @@ typedef struct {
   char input_stream_4[512];
   char input_stream_5[512];
   char input_stream_6[512];
+  char python_module[512];
   char model_weights[512];
   bool use_input_image;
   bool use_input_stream;
@@ -84,7 +85,11 @@ int parse_config_file(char *filename, conf_params_t *conf_params)
   long fsize = ftell(f);
   fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
   char *string = malloc(fsize + 1);
-  fread(string, 1, fsize, f);
+  if (fread(string, 1, fsize, f) != fsize) {
+      printf("ERROR: cannot read from %s\n", filename);
+      fclose(f);
+      return -1;
+  }
   fclose(f);
   string[fsize] = 0;
 
@@ -97,6 +102,7 @@ int parse_config_file(char *filename, conf_params_t *conf_params)
        {"input_stream_5", t_string, .addr.string = conf_params->input_stream_5, .len = sizeof(conf_params->input_stream_5)},
        {"input_stream_6", t_string, .addr.string = conf_params->input_stream_6, .len = sizeof(conf_params->input_stream_6)},
        {"input_image", t_string, .addr.string = conf_params->input_image, .len = sizeof(conf_params->input_image)},
+       {"python_module", t_string, .addr.string = conf_params->python_module, .len = sizeof(conf_params->python_module)},
        {"model_weights", t_string, .addr.string = conf_params->model_weights, .len = sizeof(conf_params->model_weights)},
        {NULL},
      };
@@ -154,13 +160,21 @@ int get_input_dimensions(conf_params_t conf_params, dim_t *dimensions)
 
   FILE * pipein = popen(ffprobe_cmd, "r");
   if (pipein == NULL) {
-    printf("ERROR: failed to run ffprobe command\n" );
-    return -1;
+      printf("ERROR: failed to run ffprobe command\n" );
+      return -1;
   }
   char line[8];
-  fgets(line, sizeof(line), pipein);
+  if (fgets(line, sizeof(line), pipein) == NULL) {
+      printf("ERROR: failed to read from pipe\n" );
+      pclose(pipein);
+      return -1;
+  }
   dimensions->width = atoi(line);
-  fgets(line, sizeof(line), pipein);
+  if (fgets(line, sizeof(line), pipein) == NULL) {
+      printf("ERROR: failed to read from pipe\n" );
+      pclose(pipein);
+      return -1;
+  }
   dimensions->height = atoi(line);
   printf("Dimensions:    %dx%d\n", dimensions->width, dimensions->height);
   dimensions->c = 3;
@@ -347,16 +361,19 @@ double what_time_is_it_now()
 
 int main(int argc, char *argv[])
 {
+
+#ifdef REMOTE_CLASSIFIER
   int sock = -1;
   struct sockaddr_in server;
+  unsigned int port = 0;
+  char ip_addr[16] = "000.000.000.000";
+#endif
+
   bool using_server = false;
-  //char message[1000] , server_reply[2000];
 
   char confile[256];
   char dirname[256];
   char logfile[256];
-  char ip_addr[16] = "000.000.000.000";
-  unsigned int port = 0;
   confile[0] = '\0';
   logfile[0] = '\0';
   strcpy(dirname, ".");
@@ -386,12 +403,14 @@ int main(int argc, char *argv[])
       case 'i':
 	tds_id = atoi(optarg);
 	break;
+#ifdef REMOTE_CLASSIFIER
       case 's':
 	snprintf(ip_addr, 15, "%s", optarg);
 	break;
       case 'p':
 	port = atoi(optarg);
 	break;
+#endif
       case ':':
 	printf("Option %c needs a value\n", optopt);
 	exit(-1);
@@ -489,7 +508,7 @@ int main(int argc, char *argv[])
   /*************************************************************************************/
   /* Initialize the PyTorch Tiny-YOLOv2 model (only if we're not using it remotely     */
   /*************************************************************************************/
-  if (!using_server && cv_toolset_init(conf_params.model_weights) != 0) {
+  if (!using_server && cv_toolset_init(conf_params.python_module, conf_params.model_weights) != 0) {
       printf("Computer Vision toolset initialization failed...\n");
       exit(1);
   }
@@ -522,7 +541,10 @@ int main(int argc, char *argv[])
   char sequence_str[3000];
   bool first_time = true;
 
-  chdir(dirname);
+  if (chdir(dirname) != 0) {
+      printf("ERROR: cannot change to directory %s\n", dirname);
+      exit(-1);
+  }
   FILE *fp_pred = fopen("predictions.log", "w");
   fprintf(fp_pred, "cam_id,time,object_id,object_name,prob,read_time_sec,conv_time_sec,pred_time_sec,bbox_time_sec\n");
 

@@ -35,7 +35,7 @@ typedef struct {
   double height;
 } detection_t;
 
-int cv_toolset_init();
+int cv_toolset_init(char *python_module, char *model_weights);
 detection_t *run_object_classification(unsigned char *data, dim_t dimensions, char *filename, int *nboxes);
 detection_t *run_object_classification_remote(unsigned char *data, dim_t dimensions, char *filename, int *nboxes, int sock);
 

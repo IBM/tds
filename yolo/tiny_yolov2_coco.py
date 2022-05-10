@@ -38,8 +38,8 @@ class TinyYOLOv2NonLeaky(lnn.module.Darknet):
                             "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
                             "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
                             "teddy bear", "hair drier", "toothbrush"],
-                input_channels=3,
-                anchors=[(0.57273, 0.677385), (1.87446, 2.06253), (3.33843, 5.47434), (7.88282, 3.52778), (9.77052, 9.16828)]):
+                 input_channels=3,
+                 anchors=[(0.57273, 0.677385), (1.87446, 2.06253), (3.33843, 5.47434), (7.88282, 3.52778), (9.77052, 9.16828)]):
 
         super().__init__()
         if not isinstance(anchors, Iterable) and not isinstance(anchors[0], Iterable):

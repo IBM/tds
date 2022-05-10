@@ -14,6 +14,7 @@ run_*
 launcher.out
 predictions.out
 *.weights
+*.ckpt
 __pycache__
 class_files
 !diagram.png
