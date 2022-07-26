@@ -22,8 +22,8 @@ TDS requires:
 The installation and execution are fairly standard:
 
 ```
-git clone git@github.com:IBM/tds.git
-cd tds
+git clone -b pytds git@github.com:IBM/tds.git pytds
+cd pytds
 make clean
 make
 ```
@@ -31,7 +31,7 @@ make
 Set up the `PYTHONPATH` environment variable to point to the TinyYoloV2/Lightnet Python files:
 
 ```
-export PYTHONPATH=<your_tds_home>/yolo. 
+export PYTHONPATH=<your_tds_home>/yolo
 ```
 
 Download the [yolov2-tiny.weights](https://pjreddie.com/media/files/yolov2-tiny.weights) weights file into `<your_tds_home>/yolo`.
