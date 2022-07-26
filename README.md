@@ -60,7 +60,7 @@ Usage: ./tds <OPTIONS>
 ./tds -c ./conf.json
 ```
 
-We also need to indicate the input image(s) to classify; for example, by setting the `input_image` field in the JSON configuration file with the path and file name of an image (e.g. [dog.jpg](https://github.com/pjreddie/darknet/blob/master/data/dog.jpg)):
+We also need to indicate the input image(s) to classify; for example, by setting the `input_image` field in the JSON configuration file with the path and file name of an image (e.g. [dog.jpg](https://raw.githubusercontent.com/pjreddie/darknet/master/data/dog.jpg)):
 
 ```
 "input_image" : "./dog.jpg",
