@@ -68,7 +68,7 @@ We also need to indicate the input image(s) to classify; for example, by setting
 
 In this case, TDS will start, load the weights into the TinyYoloV2/Lightnet model, classify that single image, and exit. Alternativelly, we can classify camera frames by indicating the RTSP URL of up to six IP cameras (using the fields `input_stream_*` in the JSON configuration file).
 
-The example above runs TDS as a single (monolitic) application; i.e. a single process running on a single computer. In some cases, we may want to separate the TDS _frontend_ (interface with the cameras) frpm the TDS _backend_ (object detection model). This is particularly useful when the object detection model is offloaded to a separate unit (e.g. external FPGA accelerator) from the CPU where TDS is launched. To enable this mode, TDS has to be built using the `REMOTE_CLASSIFIER` preprocessor macro:
+The example above runs TDS as a single (monolithic) application; i.e. a single process running on a single computer. In some cases, we may want to separate the TDS _frontend_ (interface with the cameras) from the TDS _backend_ (object detection model). This is particularly useful when the object detection model is offloaded to a separate unit (e.g. external FPGA accelerator) from the CPU where TDS is launched. To enable this mode, TDS has to be built using the `REMOTE_CLASSIFIER` preprocessor macro:
 
 ```
 make CFLAGS=-DREMOTE_CLASSIFIER
